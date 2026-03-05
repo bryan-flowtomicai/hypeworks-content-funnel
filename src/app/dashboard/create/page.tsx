@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { createClient } from '../../../lib/supabase/client'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+
+export const dynamic = 'force-dynamic'
 
 export default function CreateSubmission() {
   const [step, setStep] = useState(1)

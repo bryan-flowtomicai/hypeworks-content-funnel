@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
+import { createClient } from '../../lib/supabase/client'
+import { Button } from '../../components/ui/button'
 import Link from 'next/link'
+
+export const dynamic = 'force-dynamic'
 
 export default function Dashboard() {
   const [user, setUser] = useState(null)
