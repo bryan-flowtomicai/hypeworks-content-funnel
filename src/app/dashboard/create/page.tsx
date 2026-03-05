@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 
 export default function CreateSubmission() {
   const [step, setStep] = useState(1)
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<any>(null)
   const [formData, setFormData] = useState({
     productUrl: '',
     platform: 'amazon',
