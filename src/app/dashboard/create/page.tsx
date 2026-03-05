@@ -40,7 +40,7 @@ export default function CreateSubmission() {
     getSession()
   }, [])
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: any) => {
     const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
@@ -48,12 +48,12 @@ export default function CreateSubmission() {
     }))
   }
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = (e: any) => {
     const files = Array.from(e.target.files)
     setBrandAssets((prev) => [...prev, ...files])
   }
 
-  const handleRemoveAsset = (index) => {
+  const handleRemoveAsset = (index: number) => {
     setBrandAssets((prev) => prev.filter((_, i) => i !== index))
   }
 
