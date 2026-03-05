@@ -1,0 +1,10 @@
+{
+  "db": {
+    "baseUrl": "postgresql://postgres.zulohdueaxzowwesyeln:SUPABASE_PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres",
+    "shadowDatabaseUrl": "postgresql://postgres.zulohdueaxzowwesyeln:SUPABASE_PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres_shadow"
+  },
+  "auth": {
+    "enableAnonymousSignIns": false,
+    "enableSignUp": true
+  }
+}
