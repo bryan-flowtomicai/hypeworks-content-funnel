@@ -13,12 +13,14 @@
     "@stripe/stripe-js": "^3.0.0",
     "@supabase/auth-helpers-nextjs": "^0.8.0",
     "@supabase/supabase-js": "^2.38.0",
+    "firecrawl": "^4.15.2",
     "lucide-react": "^0.263.0",
     "next": "^14.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "shadcn-ui": "^0.8.0",
-    "stripe": "^14.0.0"
+    "stripe": "^20.4.0",
+    "undici": "^7.22.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
