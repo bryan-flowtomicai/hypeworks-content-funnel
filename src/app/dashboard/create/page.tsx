@@ -16,7 +16,7 @@ export default function CreateSubmission() {
     brandColors: '',
     products: '',
   })
-  const [brandAssets, setBrandAssets] = useState([])
+  const [brandAssets, setBrandAssets] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [sessionLoading, setSessionLoading] = useState(true)
   const router = useRouter()
