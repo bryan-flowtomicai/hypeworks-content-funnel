@@ -11,6 +11,8 @@ import {
   Sparkles,
   CheckCircle2,
   AlertCircle,
+  Brain,
+  Code2,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -41,6 +43,7 @@ export default function NewProjectPage() {
   const [scraping, setScraping] = useState(false)
   const [scraped, setScraped] = useState(false)
   const [scrapeError, setScrapeError] = useState<string | null>(null)
+  const [extractionMethod, setExtractionMethod] = useState<'ai' | 'regex' | null>(null)
   const [creating, setCreating] = useState(false)
   const [showManual, setShowManual] = useState(false)
 
@@ -91,13 +94,14 @@ export default function NewProjectPage() {
         description: data.description || '',
         key_features:
           data.key_features?.length > 0 ? data.key_features : [''],
-        target_audience: '',
+        target_audience: data.target_audience || '',
         category: data.category || '',
         content_tone: 'professional',
         brand_colors: [''],
         source_urls: [url.trim()],
       })
 
+      setExtractionMethod(data.extraction_method ?? 'regex')
       setScraped(true)
       setShowManual(true)
     } catch {
@@ -160,7 +164,7 @@ export default function NewProjectPage() {
           <p className="text-sm font-semibold">Product URL</p>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Amazon listing, Shopify page, or any product URL
+          Amazon listing, Shopify page, or any product URL — AI extracts all details
         </p>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <Input
@@ -183,11 +187,11 @@ export default function NewProjectPage() {
             {scraping ? (
               <>
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />{' '}
-                Extracting...
+                Analyzing...
               </>
             ) : (
               <>
-                <Sparkles className="mr-1.5 h-4 w-4" /> Extract
+                <Sparkles className="mr-1.5 h-4 w-4" /> AI Extract
               </>
             )}
           </Button>
@@ -202,8 +206,21 @@ export default function NewProjectPage() {
 
         {scraped && !scrapeError && (
           <div className="mt-3 flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-primary">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-            Product data extracted. Review below and create your project.
+            {extractionMethod === 'ai' ? (
+              <Brain className="h-4 w-4 shrink-0" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+            )}
+            <span>
+              {extractionMethod === 'ai'
+                ? 'AI-powered extraction complete. Review below and create your project.'
+                : 'Product data extracted. Review below and create your project.'}
+            </span>
+            {extractionMethod === 'ai' && (
+              <span className="ml-auto shrink-0 rounded-full border border-primary/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+                AI
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -258,6 +275,16 @@ export default function NewProjectPage() {
                     placeholder="Key selling points, benefits..."
                     rows={3}
                     className="flex w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground transition-colors placeholder:text-subtle focus-visible:outline-none focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    Target audience
+                  </label>
+                  <Input
+                    value={form.target_audience}
+                    onChange={(e) => update('target_audience', e.target.value)}
+                    placeholder="e.g. Fitness enthusiasts, home office workers"
                   />
                 </div>
                 <div>
