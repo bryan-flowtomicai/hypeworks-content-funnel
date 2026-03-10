@@ -1,28 +1,73 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '../../../lib/supabase/client'
-import { Button } from '../../../components/ui/button'
-import { Input } from '../../../components/ui/input'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Sparkles, SearchCheck } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { AppHeader } from '@/components/shared/app-header'
+import { PageLoader } from '@/components/shared/loading-states'
+import { ImageDropzone } from '@/components/forms/image-dropzone'
+import { FormatSelector, APlusFormat, FORMAT_OPTIONS } from '@/components/forms/format-selector'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 
 export const dynamic = 'force-dynamic'
 
+const contentTones = ['Professional', 'Lifestyle', 'Luxury', 'Technical', 'Playful'] as const
+
+const formSchema = z.object({
+  productName: z.string().min(2, 'Product name is required'),
+  brandName: z.string().min(2, 'Brand name is required'),
+  productDescription: z.string().min(20, 'Add at least 20 characters'),
+  targetAudience: z.string().min(2, 'Target audience is required'),
+  category: z.string().min(2, 'Product category is required'),
+  amazonUrl: z.string().url('Enter a valid URL'),
+  otherUrls: z.string().optional(),
+  brandColors: z.string().optional(),
+  contentTone: z.enum(contentTones),
+  keyFeaturesText: z.string().min(2, 'Add at least one bullet point'),
+})
+
+type FormValues = z.infer<typeof formSchema>
+
 export default function CreateSubmission() {
   const [step, setStep] = useState(1)
-  const [user, setUser] = useState<any>(null)
-  const [formData, setFormData] = useState({
-    productUrl: '',
-    platform: 'amazon',
-    companyName: '',
-    brandColors: '',
-    products: '',
-  })
-  const [brandAssets, setBrandAssets] = useState<any[]>([])
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
+  const [brandAssets, setBrandAssets] = useState<File[]>([])
+  const [selectedFormats, setSelectedFormats] = useState<APlusFormat[]>(['hero', 'standard'])
   const [loading, setLoading] = useState(false)
+  const [scraping, setScraping] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [sessionLoading, setSessionLoading] = useState(true)
+  const [scrapedSummary, setScrapedSummary] = useState<{
+    title?: string
+    description?: string
+  } | null>(null)
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      productName: '',
+      brandName: '',
+      productDescription: '',
+      targetAudience: '',
+      category: '',
+      amazonUrl: '',
+      otherUrls: '',
+      brandColors: '#4F46E5, #0EA5E9',
+      contentTone: 'Professional',
+      keyFeaturesText: '',
+    },
+  })
+
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     const getSession = async () => {
@@ -40,281 +85,319 @@ export default function CreateSubmission() {
     }
 
     getSession()
-  }, [])
+  }, [router, supabase])
 
-  const handleInputChange = (e: any) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+  const parseList = (raw: string | undefined) =>
+    (raw || '')
+      .split('\n')
+      .map((item) => item.replace(/^[-*]\s*/, '').trim())
+      .filter(Boolean)
+
+  const parseColors = (raw: string | undefined) =>
+    (raw || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+  const scrapeUrl = async () => {
+    const url = form.getValues('amazonUrl')
+    if (!url) return
+    setScraping(true)
+    setError(null)
+    try {
+      const response = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to scrape URL')
+      }
+      const description = result.productData?.description || ''
+      const title = result.productData?.title || ''
+
+      if (title) {
+        form.setValue('productName', title)
+      }
+      if (description) {
+        form.setValue('productDescription', description.slice(0, 1500))
+      }
+      setScrapedSummary({
+        title,
+        description: description.slice(0, 240),
+      })
+    } catch (scrapeError) {
+      setError(scrapeError instanceof Error ? scrapeError.message : 'Failed to scrape URL')
+    } finally {
+      setScraping(false)
+    }
   }
 
-  const handleFileUpload = (e: any) => {
-    const files = Array.from(e.target.files)
-    setBrandAssets((prev) => [...prev, ...files])
-  }
-
-  const handleRemoveAsset = (index: number) => {
-    setBrandAssets((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const handleSubmit = async () => {
+  const handleCreateProject = async () => {
     if (!user) return
-
+    setError(null)
+    const valid = await form.trigger()
+    if (!valid) return
+    if (selectedFormats.length === 0) {
+      setError('Select at least one A+ format.')
+      return
+    }
     setLoading(true)
     try {
-      // Create submission
+      const values = form.getValues()
+      const sourceUrls = [values.amazonUrl, values.otherUrls].filter(Boolean)
+      const payload = {
+        product_name: values.productName,
+        brand_name: values.brandName,
+        description: values.productDescription,
+        key_features: parseList(values.keyFeaturesText),
+        target_audience: values.targetAudience,
+        category: values.category,
+        content_tone: values.contentTone,
+        brand_colors: parseColors(values.brandColors),
+        source_urls: sourceUrls,
+        selected_formats: selectedFormats.map((id) => {
+          const format = FORMAT_OPTIONS.find((option) => option.id === id)
+          return { id, width: format?.width, height: format?.height }
+        }),
+      }
+
       const { data: submission, error: submitError } = await supabase
         .from('submissions')
         .insert({
           user_id: user.id,
-          product_url: formData.productUrl,
-          platform: formData.platform,
-          product_data: {
-            companyName: formData.companyName,
-            brandColors: formData.brandColors,
-            products: formData.products,
-          },
+          product_url: values.amazonUrl,
+          platform: 'amazon',
+          product_data: payload,
           status: 'pending',
-          brand_assets: brandAssets.map((f) => f.name),
+          brand_assets: brandAssets.map((asset) => asset.name),
+          user_inputs: payload,
         })
         .select()
+        .single()
 
       if (submitError) throw submitError
 
-      // Update submission count
       await supabase
         .from('users')
         .update({ submission_count: 1 })
         .eq('id', user.id)
 
-      router.push(`/dashboard/submission/${submission[0].id}`)
+      router.push(`/dashboard/submission/${submission.id}`)
     } catch (error) {
-      console.error('Error creating submission:', error)
-      alert('Failed to create submission')
+      setError(error instanceof Error ? error.message : 'Failed to create project')
     } finally {
       setLoading(false)
     }
   }
 
   if (sessionLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <p className="text-white">Loading...</p>
-      </div>
-    )
+    return <PageLoader label="Loading project builder..." />
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Navigation */}
-      <nav className="bg-slate-800 border-b border-slate-700 px-6 py-4">
-        <h1 className="text-2xl font-bold text-white">Hypeworks</h1>
-      </nav>
-
-      {/* Main Content */}
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <h2 className="text-3xl font-bold text-white mb-2">Create A+ Content</h2>
-        <p className="text-slate-400 mb-8">
-          Step {step} of 3 - Share your product details
-        </p>
-
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex gap-2">
-            {[1, 2, 3].map((s) => (
-              <div
-                key={s}
-                className={`h-2 flex-1 rounded ${
-                  s <= step ? 'bg-blue-500' : 'bg-slate-700'
-                }`}
-              />
-            ))}
+    <div className="min-h-screen">
+      <AppHeader
+        authenticated
+        onSignOut={async () => {
+          await supabase.auth.signOut()
+          router.push('/auth/signin')
+        }}
+      />
+      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr,320px] lg:px-8">
+        <section className="space-y-5">
+          <div>
+            <h1 className="text-3xl font-semibold text-[var(--text)]">Create a new project</h1>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
+              Step {step} of 3 · product details, brand assets, and Amazon-ready module formats.
+            </p>
           </div>
-        </div>
 
-        {/* Form Steps */}
-        <div className="bg-slate-800 rounded-lg border border-slate-700 p-8 mb-8">
-          {step === 1 && (
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Product Information
-              </h3>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Product URL *
-                </label>
-                <Input
-                  type="url"
-                  name="productUrl"
-                  value={formData.productUrl}
-                  onChange={handleInputChange}
-                  placeholder="https://www.amazon.com/dp/..."
-                  required
-                />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="mb-6 flex gap-2">
+                {[1, 2, 3].map((idx) => (
+                  <div key={idx} className={`h-1.5 flex-1 rounded-full ${idx <= step ? 'bg-[var(--brand)]' : 'bg-[var(--border)]'}`} />
+                ))}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Platform
-                </label>
-                <select
-                  name="platform"
-                  value={formData.platform}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="amazon">Amazon</option>
-                  <option value="ebay">eBay</option>
-                  <option value="shopify">Shopify</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Company/Brand Name *
-                </label>
-                <Input
-                  type="text"
-                  name="companyName"
-                  value={formData.companyName}
-                  onChange={handleInputChange}
-                  placeholder="Your company name"
-                  required
-                />
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Brand Assets
-              </h3>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Upload Brand Assets (Logo, Images, etc.)
-                </label>
-                <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 text-center">
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <p className="text-slate-400">
-                      Click to upload or drag and drop
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      PNG, JPG, GIF up to 10MB
-                    </p>
-                  </label>
-                </div>
-              </div>
-
-              {brandAssets.length > 0 && (
-                <div>
-                  <p className="text-sm font-medium text-slate-300 mb-2">
-                    Selected Assets ({brandAssets.length})
-                  </p>
-                  <div className="space-y-2">
-                    {brandAssets.map((asset, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center p-3 bg-slate-700 rounded"
-                      >
-                        <span className="text-slate-300">{asset.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveAsset(index)}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
+              {step === 1 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-[var(--text)]">Product details</h2>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-xs font-medium text-[var(--text-muted)]">
+                        Amazon URL
+                      </label>
+                      <div className="flex gap-2">
+                        <Input placeholder="https://amazon.com/dp/..." {...form.register('amazonUrl')} />
+                        <Button type="button" variant="outline" onClick={scrapeUrl} disabled={scraping}>
+                          <SearchCheck className="mr-2 h-4 w-4" />
+                          {scraping ? 'Fetching...' : 'Scrape'}
+                        </Button>
                       </div>
-                    ))}
+                      {form.formState.errors.amazonUrl && (
+                        <p className="text-xs text-red-500">{form.formState.errors.amazonUrl.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-[var(--text-muted)]">Product name</label>
+                      <Input placeholder="UltraGrip Kitchen Shears" {...form.register('productName')} />
+                      {form.formState.errors.productName && (
+                        <p className="text-xs text-red-500">{form.formState.errors.productName.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-[var(--text-muted)]">Brand name</label>
+                      <Input placeholder="KitchenNorth" {...form.register('brandName')} />
+                      {form.formState.errors.brandName && (
+                        <p className="text-xs text-red-500">{form.formState.errors.brandName.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-[var(--text-muted)]">Product category</label>
+                      <Input placeholder="Home & Kitchen" {...form.register('category')} />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-[var(--text-muted)]">Target audience</label>
+                      <Input placeholder="Home cooks, meal-prep creators" {...form.register('targetAudience')} />
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-xs font-medium text-[var(--text-muted)]">Product description</label>
+                      <Textarea
+                        placeholder="Describe positioning, pain points solved, and benefits..."
+                        {...form.register('productDescription')}
+                      />
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-xs font-medium text-[var(--text-muted)]">
+                        Key features (one per line)
+                      </label>
+                      <Textarea
+                        placeholder={'- Titanium micro-serrated edge\n- Dishwasher-safe\n- Child-lock safety grip'}
+                        {...form.register('keyFeaturesText')}
+                      />
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-xs font-medium text-[var(--text-muted)]">
+                        Other platform URLs (optional)
+                      </label>
+                      <Input placeholder="https://brand.com, https://shopify.com/..." {...form.register('otherUrls')} />
+                    </div>
                   </div>
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Brand Colors (e.g., #FF5733, #33FF57)
-                </label>
-                <Input
-                  type="text"
-                  name="brandColors"
-                  value={formData.brandColors}
-                  onChange={handleInputChange}
-                  placeholder="Enter hex colors separated by commas"
-                />
-              </div>
-            </div>
-          )}
+              {step === 2 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-[var(--text)]">Brand assets + tone</h2>
+                  <ImageDropzone files={brandAssets} onChange={setBrandAssets} />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-[var(--text-muted)]">Brand colors</label>
+                      <Input placeholder="#4F46E5, #0EA5E9" {...form.register('brandColors')} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-[var(--text-muted)]">Content tone</label>
+                      <select
+                        className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text)]"
+                        {...form.register('contentTone')}
+                      >
+                        {contentTones.map((tone) => (
+                          <option key={tone} value={tone}>
+                            {tone}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-          {step === 3 && (
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Content Details
-              </h3>
+              {step === 3 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-[var(--text)]">A+ format selection</h2>
+                  <p className="text-sm text-[var(--text-muted)]">
+                    Choose one or more module formats to generate in this run.
+                  </p>
+                  <FormatSelector selected={selectedFormats} onChange={setSelectedFormats} />
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] p-3">
+                    <p className="text-xs font-medium text-[var(--text)]">
+                      Selected: {selectedFormats.length} format(s)
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Generation will use your product context, selected tone, and brand palette.
+                    </p>
+                  </div>
+                </div>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Product Description
-                </label>
-                <textarea
-                  name="products"
-                  value={formData.products}
-                  onChange={handleInputChange}
-                  placeholder="Describe your product, key features, benefits..."
-                  rows={6}
-                  className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <p className="text-sm text-blue-300">
-                  💡 <strong>Tip:</strong> Include key selling points, target
-                  audience, and unique features for better A+ content
+              {error && (
+                <p className="mt-4 rounded-xl border border-red-300/30 bg-red-500/10 px-3 py-2 text-xs text-red-500">
+                  {error}
                 </p>
+              )}
+
+              <div className="mt-6 flex justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep((prev) => Math.max(1, prev - 1))}
+                  disabled={step === 1 || loading}
+                >
+                  Previous
+                </Button>
+                {step < 3 ? (
+                  <Button type="button" onClick={() => setStep((prev) => Math.min(3, prev + 1))}>
+                    Next
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={handleCreateProject} disabled={loading}>
+                    {loading ? 'Creating...' : 'Create project'}
+                  </Button>
+                )}
               </div>
-            </div>
-          )}
-        </div>
+            </CardContent>
+          </Card>
+        </section>
 
-        {/* Navigation Buttons */}
-        <div className="flex gap-4">
-          <button
-            onClick={() => setStep(Math.max(1, step - 1))}
-            disabled={step === 1}
-            className="px-6 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            Previous
-          </button>
-
-          {step < 3 ? (
-            <button
-              onClick={() => setStep(step + 1)}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition ml-auto"
-            >
-              Next
-            </button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={loading || !formData.productUrl || !formData.companyName}
-              className="ml-auto"
-            >
-              {loading ? 'Creating...' : 'Create A+ Content'}
-            </Button>
+        <aside className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Workflow checklist</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-[var(--text-muted)]">
+              <p>1. Paste an Amazon product URL.</p>
+              <p>2. Add brand context and target audience.</p>
+              <p>3. Select A+ modules to generate.</p>
+              <p>4. Create project and launch generation.</p>
+            </CardContent>
+          </Card>
+          {scrapedSummary && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[var(--brand)]" />
+                  Scraped context
+                </CardTitle>
+                <CardDescription>Pulled from your product URL.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {scrapedSummary.title && <Badge>{scrapedSummary.title}</Badge>}
+                <p className="text-xs text-[var(--text-muted)]">{scrapedSummary.description}</p>
+              </CardContent>
+            </Card>
           )}
-        </div>
-      </div>
+        </aside>
+      </main>
     </div>
   )
 }
