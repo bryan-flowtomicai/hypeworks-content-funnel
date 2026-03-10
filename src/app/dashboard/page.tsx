@@ -1,19 +1,27 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '../../lib/supabase/client'
-import { Button } from '../../components/ui/button'
 import Link from 'next/link'
+import { Plus, FolderClock, Image as ImageIcon } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { AppHeader } from '@/components/shared/app-header'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageLoader } from '@/components/shared/loading-states'
+import { Database } from '@/lib/database.types'
 
 export const dynamic = 'force-dynamic'
 
+type Submission = Database['public']['Tables']['submissions']['Row']
+
 export default function Dashboard() {
-  const [user, setUser] = useState(null)
-  const [submissions, setSubmissions] = useState([])
+  const [user, setUser] = useState<{ email?: string } | null>(null)
+  const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     const getSession = async () => {
@@ -43,118 +51,132 @@ export default function Dashboard() {
     }
 
     getSession()
-  }, [])
+  }, [router, supabase])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/')
+    router.push('/auth/signin')
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <p className="text-white">Loading...</p>
-      </div>
-    )
+    return <PageLoader label="Loading dashboard..." />
   }
 
+  const completed = submissions.filter((s) => s.status === 'completed').length
+  const processing = submissions.filter((s) => s.status === 'processing').length
+
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Navigation */}
-      <nav className="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-white">Hypeworks</h1>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition"
-        >
-          Sign Out
-        </button>
-      </nav>
+    <div className="min-h-screen">
+      <AppHeader authenticated onSignOut={handleLogout} />
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <section className="mb-8 grid gap-4 lg:grid-cols-[1.3fr,0.7fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Welcome back{user?.email ? `, ${user.email}` : ''}</CardTitle>
+              <CardDescription>
+                Manage projects, monitor generation status, and launch new A+ modules.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-3">
+              <Link href="/dashboard/create">
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New project
+                </Button>
+              </Link>
+              <Link href="/">
+                <Button variant="outline">View product site</Button>
+              </Link>
+              <Link href="/dashboard/settings">
+                <Button variant="ghost">Billing settings</Button>
+              </Link>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Plan snapshot</CardTitle>
+              <CardDescription>Free tier currently active.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] p-3 text-sm text-[var(--text-muted)]">
+                Upgrade to Pro for higher generation limits and all format types.
+              </div>
+            </CardContent>
+          </Card>
+        </section>
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-white mb-2">
-            Welcome, {user?.email}
-          </h2>
-          <p className="text-slate-400">
-            Manage your A+ content submissions
-          </p>
-        </div>
+        <section className="mb-8 grid gap-4 sm:grid-cols-3">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
+                Total projects
+              </p>
+              <p className="mt-2 text-3xl font-semibold text-[var(--text)]">{submissions.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">Completed</p>
+              <p className="mt-2 text-3xl font-semibold text-[var(--success)]">{completed}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-xs uppercase tracking-wide text-[var(--text-muted)]">Generating</p>
+              <p className="mt-2 text-3xl font-semibold text-amber-500">{processing}</p>
+            </CardContent>
+          </Card>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <p className="text-slate-400 text-sm mb-2">Total Submissions</p>
-            <p className="text-3xl font-bold text-white">{submissions.length}</p>
+        <section>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-[var(--text)]">Recent projects</h2>
+            <Badge>{submissions.length} records</Badge>
           </div>
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <p className="text-slate-400 text-sm mb-2">Completed</p>
-            <p className="text-3xl font-bold text-green-400">
-              {submissions.filter((s) => s.status === 'completed').length}
-            </p>
-          </div>
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <p className="text-slate-400 text-sm mb-2">Processing</p>
-            <p className="text-3xl font-bold text-yellow-400">
-              {submissions.filter((s) => s.status === 'processing').length}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-4 mb-8">
-          <Link href="/dashboard/create">
-            <Button>Create New Submission</Button>
-          </Link>
-        </div>
-
-        {/* Submissions List */}
-        <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-700">
-            <h3 className="text-lg font-semibold text-white">Your Submissions</h3>
-          </div>
-
           {submissions.length === 0 ? (
-            <div className="px-6 py-8 text-center text-slate-400">
-              <p>No submissions yet. Create your first one!</p>
-            </div>
+            <Card>
+              <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+                <FolderClock className="h-8 w-8 text-[var(--text-muted)]" />
+                <p className="max-w-sm text-sm text-[var(--text-muted)]">
+                  No projects yet. Create your first project to generate Amazon-ready A+ visuals.
+                </p>
+                <Link href="/dashboard/create">
+                  <Button>Create first project</Button>
+                </Link>
+              </CardContent>
+            </Card>
           ) : (
-            <div className="divide-y divide-slate-700">
+            <div className="grid gap-3">
               {submissions.map((submission) => (
-                <div
-                  key={submission.id}
-                  className="px-6 py-4 flex justify-between items-center hover:bg-slate-700/50 transition"
-                >
-                  <div>
-                    <p className="text-white font-medium">{submission.product_url}</p>
-                    <p className="text-slate-400 text-sm">
-                      {new Date(submission.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        submission.status === 'completed'
-                          ? 'bg-green-500/20 text-green-400'
-                          : submission.status === 'processing'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'bg-gray-500/20 text-gray-400'
-                      }`}
-                    >
-                      {submission.status.charAt(0).toUpperCase() +
-                        submission.status.slice(1)}
-                    </span>
-                    <Link href={`/dashboard/submission/${submission.id}`}>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
+                <Card key={submission.id} className="transition hover:-translate-y-0.5">
+                  <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--text)]">
+                        {submission.product_url || 'Untitled product project'}
+                      </p>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Created {new Date(submission.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {submission.status === 'completed' && <Badge variant="success">Completed</Badge>}
+                      {submission.status === 'processing' && <Badge variant="warning">Generating</Badge>}
+                      {submission.status === 'pending' && <Badge>Draft</Badge>}
+                      {submission.status === 'failed' && <Badge variant="danger">Failed</Badge>}
+                      <Link href={`/dashboard/submission/${submission.id}`}>
+                        <Button variant="outline" size="sm">
+                          <ImageIcon className="mr-2 h-4 w-4" />
+                          Open
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   )
 }

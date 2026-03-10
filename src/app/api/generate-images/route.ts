@@ -1,113 +1,151 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-interface GenerateImagesRequest {
-  userId: string
-  submissionId: string
-  productTitle: string
-  productDescription: string
-  brandColors?: string[]
-  companyName?: string
-}
+import * as fal from '@fal-ai/serverless-client'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 interface ImageGenerationResult {
-  module: string
+  formatType: string
   imageUrl: string
   prompt: string
+  width: number
+  height: number
+}
+
+interface SelectedFormat {
+  id: string
+  width: number
+  height: number
+}
+
+const defaultFormats: SelectedFormat[] = [
+  { id: 'standard', width: 970, height: 300 },
+  { id: 'hero', width: 970, height: 600 },
+  { id: 'square', width: 600, height: 600 },
+]
+
+const safeString = (value: unknown, fallback = '') =>
+  typeof value === 'string' ? value : fallback
+
+const safeList = (value: unknown) =>
+  Array.isArray(value) ? value.filter((item) => typeof item === 'string') : []
+
+const getImageUrl = (result: unknown): string | null => {
+  if (!result || typeof result !== 'object') return null
+  const output = result as Record<string, unknown>
+  const images = output.images as Array<{ url?: string }> | undefined
+  if (Array.isArray(images) && images[0]?.url) return images[0].url
+  const data = output.data as { images?: Array<{ url?: string }> } | undefined
+  if (data?.images?.[0]?.url) return data.images[0].url
+  return null
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body: GenerateImagesRequest = await request.json()
+    const supabase = createRouteHandlerClient({ cookies })
     const {
-      userId,
-      submissionId,
-      productTitle,
-      productDescription,
-      brandColors,
-      companyName,
-    } = body
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    if (!userId || !submissionId || !productTitle) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const kieApiKey = process.env.KIE_API_KEY
-    if (!kieApiKey) {
-      return NextResponse.json(
-        { error: 'KIE API key not configured' },
-        { status: 500 }
-      )
+    const body = await request.json()
+    const submissionId = safeString(body.submissionId)
+    const payload = (body.productData || {}) as Record<string, unknown>
+
+    if (!submissionId) {
+      return NextResponse.json({ error: 'Missing submissionId' }, { status: 400 })
+    }
+    if (!process.env.FAL_KEY) {
+      return NextResponse.json({ error: 'FAL_KEY is not configured' }, { status: 500 })
     }
 
-    // Define prompts for each A+ module
-    const prompts = {
-      hero: `Create a hero image for Amazon A+ content. Product: ${productTitle}. Style: professional, engaging, with clean design. Brand colors: ${brandColors?.join(', ') || 'blue and white'}.`,
-      features: `Create an infographic showing product features for: ${productTitle}. Features: ${productDescription.substring(0, 200)}. Style: modern, clean, with icons.`,
-      comparison: `Create a comparison chart image for ${productTitle} vs competitors. Highlight key advantages. Style: professional, easy to scan.`,
-      lifestyle: `Create a lifestyle image showing ${productTitle} in use. Company: ${companyName || 'the brand'}. Style: aspirational, professional.`,
-      grid: `Create a 2x2 grid showcasing ${productTitle} details and benefits. Style: modern, clean, branded.`,
-    }
+    fal.config({ credentials: process.env.FAL_KEY })
 
-    // Initialize Supabase inside the handler
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-    )
+    const productName = safeString(payload.product_name, 'Unnamed product')
+    const brandName = safeString(payload.brand_name, 'Brand')
+    const category = safeString(payload.category, 'General')
+    const targetAudience = safeString(payload.target_audience, 'Amazon shoppers')
+    const tone = safeString(payload.content_tone, 'Professional')
+    const description = safeString(payload.description, '').slice(0, 1200)
+    const keyFeatures = safeList(payload.key_features).join('; ')
+    const brandColors = safeList(payload.brand_colors).join(', ')
+    const selectedFormats = Array.isArray(payload.selected_formats)
+      ? payload.selected_formats
+          .map((format) => format as SelectedFormat)
+          .filter((format) => format?.id && format?.width && format?.height)
+      : defaultFormats
+
+    await supabase
+      .from('submissions')
+      .update({ status: 'processing' })
+      .eq('id', submissionId)
+      .eq('user_id', session.user.id)
 
     const generatedImages: ImageGenerationResult[] = []
 
-    // Generate images for each module
-    for (const [module, prompt] of Object.entries(prompts)) {
+    for (const format of selectedFormats) {
+      const constructedPrompt = `
+Product: ${productName} by ${brandName}
+Category: ${category}
+Key Features: ${keyFeatures}
+Target Audience: ${targetAudience}
+Tone: ${tone}
+Brand Colors: ${brandColors || 'brand-consistent palette'}
+Format: Amazon A+ content module at ${format.width}x${format.height}px (${format.id})
+Additional Context: ${description}
+Style: Premium e-commerce product photography, clean composition, conversion-focused messaging layout.
+      `.trim()
+
       try {
-        const response = await fetch('https://api.kie.ai/v1/images/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${kieApiKey}`,
+        const result = (await fal.subscribe('fal-ai/flux/dev', {
+          input: {
+            prompt: constructedPrompt,
+            image_size: {
+              width: format.width,
+              height: format.height,
+            },
+            num_images: 1,
           },
-          body: JSON.stringify({
-            prompt,
-            size: '1024x1024',
-            model: 'default',
-            quality: 'high',
-          }),
-        })
+          pollInterval: 3000,
+        })) as { data?: unknown }
 
-        if (!response.ok) {
-          console.error(`Failed to generate ${module} image`)
-          continue
-        }
-
-        const data = await response.json()
-        const imageUrl = data.data?.[0]?.url
-
+        const imageUrl = getImageUrl(result?.data)
         if (imageUrl) {
           generatedImages.push({
-            module,
+            formatType: format.id,
             imageUrl,
-            prompt,
+            prompt: constructedPrompt,
+            width: format.width,
+            height: format.height,
           })
-
-          // Store in Supabase
-          const { error: updateError } = await supabase
-            .from('submissions')
-            .update({
-              generated_images: [...(generatedImages.map((img) => img.imageUrl))],
-            })
-            .eq('id', submissionId)
-
-          if (updateError) {
-            console.error('Failed to store image:', updateError)
-          }
         }
-      } catch (error) {
-        console.error(`Error generating ${module} image:`, error)
+      } catch (formatError) {
+        console.error(`fal generation failed for ${format.id}`, formatError)
       }
     }
+
+    if (generatedImages.length === 0) {
+      await supabase
+        .from('submissions')
+        .update({ status: 'failed' })
+        .eq('id', submissionId)
+        .eq('user_id', session.user.id)
+      return NextResponse.json(
+        { error: 'No images were generated successfully' },
+        { status: 502 }
+      )
+    }
+
+    await supabase
+      .from('submissions')
+      .update({
+        generated_images: generatedImages.map((img) => img.imageUrl),
+        status: 'completed',
+      })
+      .eq('id', submissionId)
+      .eq('user_id', session.user.id)
 
     return NextResponse.json({
       success: true,

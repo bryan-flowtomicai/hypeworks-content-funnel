@@ -1,31 +1,39 @@
 import * as React from 'react'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/utils'
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'outline'
-  size?: 'sm' | 'md' | 'lg'
-}
+const buttonVariants = cva(
+  'inline-flex items-center justify-center rounded-xl font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--brand)] disabled:pointer-events-none disabled:opacity-50 ring-offset-transparent',
+  {
+    variants: {
+      variant: {
+        default:
+          'bg-[var(--brand)] text-white shadow-lg shadow-indigo-500/20 hover:bg-[var(--brand-strong)]',
+        outline:
+          'border border-[var(--border)] bg-transparent text-[var(--text)] hover:bg-[var(--bg-soft)]',
+        ghost: 'text-[var(--text)] hover:bg-[var(--bg-soft)]',
+        danger:
+          'bg-red-600 text-white shadow-lg shadow-red-500/20 hover:bg-red-700',
+      },
+      size: {
+        sm: 'h-9 px-4 text-sm',
+        md: 'h-10 px-5 text-sm',
+        lg: 'h-12 px-6 text-base',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'md',
+    },
+  }
+)
 
+interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {}
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className = '', variant = 'default', size = 'md', ...props }, ref) => {
-    const baseStyles =
-      'font-semibold rounded-lg transition-all duration-200 flex items-center justify-center'
-    const variantStyles = {
-      default: 'bg-blue-600 text-white hover:bg-blue-700',
-      outline: 'border border-slate-300 text-white hover:bg-slate-700',
-    }
-    const sizeStyles = {
-      sm: 'px-4 py-2 text-sm',
-      md: 'px-6 py-2.5 text-base',
-      lg: 'px-8 py-3 text-lg',
-    }
-
-    return (
-      <button
-        className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
-        ref={ref}
-        {...props}
-      />
-    )
+  ({ className, variant, size, ...props }, ref) => {
+    return <button className={cn(buttonVariants({ variant, size }), className)} ref={ref} {...props} />
   }
 )
 Button.displayName = 'Button'
