@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Hypeworks A+ Content Funnel',
-  description: 'Generate AI-powered A+ content for Amazon listings',
+  title: 'Hypeworks — AI-Powered A+ Content Generator',
+  description:
+    'Generate professional Amazon A+ content with AI. Transform your product listings with stunning, brand-consistent imagery.',
 }
 
 export default function RootLayout({
@@ -12,8 +13,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" className="dark">
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        {children}
+      </body>
     </html>
   )
 }

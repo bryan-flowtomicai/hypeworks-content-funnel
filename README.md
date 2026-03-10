@@ -1,202 +1,91 @@
-# Hypeworks A+ Content Funnel
+# Hypeworks — A+ Content Generator
 
-Lead capture + AI A+ content generator at content.hypeworks.io
-
-## Overview
-
-This is a Next.js 14 application that allows Amazon sellers to generate AI-powered A+ content for their product listings.
-
-**Features:**
-- Free first submission (email capture)
-- Subsequent submissions behind Stripe paywall
-- Multi-step form for product details
-- Brand asset upload
-- AI-generated A+ content using kie.ai
-- User authentication via Supabase
-- Stripe integration for payments
+AI-powered A+ content generation for Amazon sellers and e-commerce brands.
 
 ## Tech Stack
 
-- **Frontend:** Next.js 14, React 18, TypeScript, Tailwind CSS, shadcn/ui
-- **Backend:** Supabase (PostgreSQL, Auth, RLS)
-- **Payments:** Stripe
-- **AI:** kie.ai API for image generation
-- **Hosting:** Vercel (planned)
+- **Frontend**: Next.js 14 (App Router), Tailwind CSS v4, TypeScript
+- **Auth & Database**: Supabase (PostgreSQL, Auth, Storage)
+- **AI**: [fal.ai](https://fal.ai) (FLUX image generation)
+- **Payments**: Stripe (subscriptions)
+- **Hosting**: Vercel
 
-## Project Structure
+## Getting Started
 
-```
-src/
-├── app/
-│   ├── page.tsx              # Landing page
-│   ├── auth/
-│   │   ├── signin/page.tsx   # Sign in page
-│   │   └── signup/page.tsx   # Sign up page
-│   ├── dashboard/
-│   │   ├── page.tsx          # User dashboard
-│   │   ├── create/page.tsx   # Multi-step form
-│   │   └── submission/[id]/page.tsx  # Submission detail
-│   └── layout.tsx            # Root layout
-├── components/
-│   └── ui/                   # Reusable UI components
-├── lib/
-│   ├── supabase/            # Supabase clients
-│   └── database.types.ts    # TypeScript types
-└── styles/
-    └── globals.css          # Global styles
-```
-
-## Setup Instructions
-
-### 1. Clone & Install
+### 1. Install dependencies
 
 ```bash
-git clone https://github.com/bryan-flowtomicai/hypeworks-content-funnel.git
-cd hypeworks-content-funnel
 npm install
 ```
 
-### 2. Environment Variables
+### 2. Set up environment
 
-Create `.env.local` with:
+Copy `.env.example` to `.env.local` and fill in your credentials:
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://zulohdueaxzowwesyeln.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_key
-
-STRIPE_SECRET_KEY=sk_test_xxx
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
-
-KIE_AI_API_KEY=7a32f8913ba3942a6a65c5b8d57a11be
+```bash
+cp .env.example .env.local
 ```
 
-### 3. Database Setup
+### 3. Set up Supabase
 
-Run the migration in Supabase SQL Editor:
+1. Create a project at [supabase.com](https://supabase.com)
+2. Run the migration in `supabase/migrations/001_schema.sql` via the SQL editor
+3. Enable Google OAuth in Authentication > Providers (optional)
+4. Copy your project URL and anon key to `.env.local`
 
-```sql
--- See supabase/migrations/001_init.sql
+### 4. Set up Stripe
+
+1. Create products and prices in the Stripe dashboard
+2. Add your keys to `.env.local`
+3. For local webhook testing:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
 
-### 4. Run Locally
+### 5. Set up fal.ai
+
+1. Create an account at [fal.ai](https://fal.ai)
+2. Generate an API key and add it to `.env.local` as `FAL_KEY`
+
+### 6. Run the dev server
 
 ```bash
 npm run dev
 ```
 
-Visit `http://localhost:3000`
-
 ## Database Schema
 
-### users table
-- `id` (UUID, PK)
-- `email` (TEXT, UNIQUE)
-- `name` (TEXT)
-- `company` (TEXT)
-- `website` (TEXT)
-- `amazon_store_url` (TEXT)
-- `plan` (TEXT: free/pro/enterprise)
-- `submission_count` (INT)
-- `stripe_customer_id` (TEXT)
-- `created_at` (TIMESTAMP)
+See `supabase/migrations/001_schema.sql` for the full schema including:
 
-### submissions table
-- `id` (UUID, PK)
-- `user_id` (UUID, FK)
-- `product_url` (TEXT)
-- `platform` (TEXT: amazon/ebay/shopify)
-- `product_data` (JSONB)
-- `brand_assets` (TEXT[])
-- `user_inputs` (JSONB)
-- `generated_images` (TEXT[])
-- `status` (TEXT: pending/processing/completed/failed)
-- `created_at` (TIMESTAMP)
+- **profiles** — user profiles linked to Supabase Auth
+- **projects** — product input data and settings
+- **uploaded_assets** — user-uploaded product images
+- **generated_images** — AI-generated A+ content images
+- **subscriptions** — Stripe subscription state
 
-## Features Implemented
+All tables have RLS enabled. A trigger auto-creates profiles on signup.
 
-### Phase 1: Foundation ✅
-- [x] Next.js 14 project setup
-- [x] Tailwind CSS configuration
-- [x] TypeScript setup
-- [x] Supabase integration
-- [x] Database schema & migrations
-- [x] RLS policies
+## API Routes
 
-### Phase 2: Auth & UI ✅
-- [x] Landing page with hero
-- [x] Sign up page (email capture)
-- [x] Sign in page
-- [x] Dashboard
-- [x] Responsive design
-- [x] Basic UI components (Button, Input)
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/projects` | GET, POST | List / create projects |
+| `/api/projects/[id]` | GET, PUT, DELETE | Single project CRUD |
+| `/api/projects/[id]/generate` | POST | Trigger fal.ai generation |
+| `/api/projects/[id]/images` | GET | List generated images |
+| `/api/projects/[id]/scrape` | POST | Scrape product URL |
+| `/api/stripe/checkout` | POST | Create Stripe checkout |
+| `/api/stripe/portal` | POST | Stripe customer portal |
+| `/api/stripe/webhook` | POST | Handle Stripe webhooks |
+| `/api/user/profile` | GET, PUT | User profile |
 
-### Phase 3: Multi-Step Form ✅
-- [x] Step 1: Product information (URL, platform, company)
-- [x] Step 2: Brand assets (file upload, colors)
-- [x] Step 3: Product description
-- [x] Form validation
-- [x] Submission creation
+## Subscription Tiers
 
-### Phase 4: TODO
-- [ ] Stripe integration (payment gate)
-- [ ] kie.ai integration (image generation)
-- [ ] Admin dashboard
-- [ ] Email notifications
-- [ ] Submission detail page
-- [ ] Image preview/download
-- [ ] Error handling & logging
-- [ ] Testing
-
-## Development
-
-```bash
-npm run dev      # Start dev server
-npm run build    # Build for production
-npm run start    # Start production server
-npm run lint     # Run linter
-```
-
-## API Endpoints (To be implemented)
-
-- `POST /api/submissions` - Create submission
-- `GET /api/submissions/:id` - Get submission
-- `GET /api/submissions` - List user submissions
-- `POST /api/generate-content` - Trigger AI generation
-- `POST /api/checkout` - Create Stripe session
-
-## Next Steps
-
-1. **Stripe Integration**
-   - Set up payment intent API
-   - Implement checkout flow
-   - Update user plan after payment
-
-2. **kie.ai Integration**
-   - Image generation API
-   - Async processing queue
-   - Result storage
-
-3. **Polish**
-   - Email notifications
-   - Better error handling
-   - Submission detail view
-   - Admin dashboard
-
-## Deployment
-
-Deploy to Vercel:
-
-```bash
-vercel
-```
-
-Or push to GitHub and connect Vercel for automatic deployment.
-
-## Contributing
-
-Work on feature branches and submit PRs.
-
-## License
-
-Proprietary - Hypeworks
+| Feature | Free | Pro ($29/mo) | Agency ($99/mo) |
+|---------|------|--------------|-----------------|
+| Generations | 5 total | 100/month | Unlimited |
+| Projects | 2 | Unlimited | Unlimited |
+| Image formats | Standard only | All | All |
+| URL scraping | No | Yes | Yes |
+| Priority queue | No | No | Yes |
