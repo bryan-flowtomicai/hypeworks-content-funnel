@@ -1,6 +1,15 @@
 import { fal } from '@fal-ai/client'
 
-fal.config({ credentials: process.env.FAL_KEY! })
+let configured = false
+
+function ensureConfig() {
+  if (configured) return
+  if (!process.env.FAL_KEY) {
+    throw new Error('FAL_KEY environment variable is not set')
+  }
+  fal.config({ credentials: process.env.FAL_KEY })
+  configured = true
+}
 
 interface GenerateImageInput {
   prompt: string
@@ -16,6 +25,8 @@ interface GenerateImageResult {
 export async function generateImage(
   input: GenerateImageInput
 ): Promise<GenerateImageResult> {
+  ensureConfig()
+
   const result = await fal.subscribe('fal-ai/flux/dev', {
     input: {
       prompt: input.prompt,

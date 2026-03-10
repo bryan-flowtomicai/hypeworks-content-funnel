@@ -4,6 +4,8 @@ import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { generateImage, buildPrompt } from '@/lib/fal/generate'
 import { IMAGE_FORMATS, type ImageFormatType } from '@/types'
 
+export const maxDuration = 60
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

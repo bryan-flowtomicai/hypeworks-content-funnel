@@ -32,15 +32,21 @@ export function GenerateButton({ projectId }: { projectId: string }) {
       })
 
       if (!res.ok) {
-        const data = await res.json()
-        alert(data.error || 'Generation failed')
+        const data = await res.json().catch(() => null)
+        alert(data?.error || `Generation failed (${res.status})`)
         return
+      }
+
+      const data = await res.json()
+      const failed = data.results?.filter((r: { status: string }) => r.status === 'failed')
+      if (failed?.length) {
+        alert(`${failed.length} format(s) failed to generate. Check your fal.ai key.`)
       }
 
       setShowPicker(false)
       router.refresh()
-    } catch {
-      alert('Something went wrong. Please try again.')
+    } catch (err) {
+      alert(`Something went wrong: ${err instanceof Error ? err.message : 'Request timed out or failed. Try again.'}`)
     } finally {
       setLoading(false)
     }
