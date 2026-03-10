@@ -7,7 +7,7 @@ import { renderTemplate } from '@/lib/templates'
 import type { TemplateData } from '@/lib/templates'
 import { IMAGE_FORMATS, type ImageFormatType } from '@/types'
 
-export const maxDuration = 60
+export const maxDuration = 300
 
 export async function POST(
   request: Request,

@@ -4,12 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { IMAGE_FORMATS, type ImageFormatType } from '@/types'
-import { Loader2, Sparkles, Trash2, X } from 'lucide-react'
+import { Loader2, Sparkles, Trash2, X, AlertCircle } from 'lucide-react'
 
 export function GenerateButton({ projectId }: { projectId: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [selectedFormats, setSelectedFormats] = useState<ImageFormatType[]>([
     'hero',
   ])
@@ -24,6 +25,7 @@ export function GenerateButton({ projectId }: { projectId: string }) {
 
   async function handleGenerate() {
     setLoading(true)
+    setError(null)
     try {
       const res = await fetch(`/api/projects/${projectId}/generate`, {
         method: 'POST',
@@ -33,20 +35,28 @@ export function GenerateButton({ projectId }: { projectId: string }) {
 
       if (!res.ok) {
         const data = await res.json().catch(() => null)
-        alert(data?.error || `Generation failed (${res.status})`)
+        setError(data?.error || `Generation failed (${res.status})`)
         return
       }
 
       const data = await res.json()
-      const failed = data.results?.filter((r: { status: string }) => r.status === 'failed')
+      const failed = data.results?.filter(
+        (r: { status: string }) => r.status === 'failed'
+      )
       if (failed?.length) {
-        alert(`${failed.length} format(s) failed to generate. Check your fal.ai key.`)
+        setError(
+          `${failed.length} format(s) failed: ${failed.map((f: { error?: string }) => f.error || 'unknown').join(', ')}`
+        )
       }
 
       setShowPicker(false)
       router.refresh()
     } catch (err) {
-      alert(`Something went wrong: ${err instanceof Error ? err.message : 'Request timed out or failed. Try again.'}`)
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Request timed out or failed. Try again.'
+      )
     } finally {
       setLoading(false)
     }
@@ -71,12 +81,16 @@ export function GenerateButton({ projectId }: { projectId: string }) {
             </p>
           </div>
           <button
-            onClick={() => setShowPicker(false)}
+            onClick={() => {
+              setShowPicker(false)
+              setError(null)
+            }}
             className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
+
         <div className="mt-6 space-y-2">
           {(
             Object.entries(IMAGE_FORMATS) as [
@@ -107,10 +121,30 @@ export function GenerateButton({ projectId }: { projectId: string }) {
             </label>
           ))}
         </div>
-        <div className="mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+
+        {error && (
+          <div className="mt-4 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {loading && (
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-primary">
+            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+            <span>
+              Generating A+ content — this takes 30–60 seconds...
+            </span>
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
             variant="outline"
-            onClick={() => setShowPicker(false)}
+            onClick={() => {
+              setShowPicker(false)
+              setError(null)
+            }}
             disabled={loading}
           >
             Cancel

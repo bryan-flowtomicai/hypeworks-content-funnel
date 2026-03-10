@@ -45,6 +45,7 @@ export default function NewProjectPage() {
   const [scrapeError, setScrapeError] = useState<string | null>(null)
   const [extractionMethod, setExtractionMethod] = useState<'ai' | 'regex' | null>(null)
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [showManual, setShowManual] = useState(false)
 
   const [form, setForm] = useState<FormState>({
@@ -114,6 +115,7 @@ export default function NewProjectPage() {
   async function handleCreate() {
     if (!form.product_name.trim()) return
     setCreating(true)
+    setCreateError(null)
 
     try {
       const payload = {
@@ -130,12 +132,16 @@ export default function NewProjectPage() {
         body: JSON.stringify(payload),
       })
 
-      if (!res.ok) throw new Error('Failed to create project')
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        setCreateError(data?.error || 'Failed to create project')
+        return
+      }
 
       const project = await res.json()
       router.push(`/dashboard/projects/${project.id}`)
     } catch {
-      alert('Failed to create project. Please try again.')
+      setCreateError('Failed to create project. Please try again.')
     } finally {
       setCreating(false)
     }
@@ -375,8 +381,16 @@ export default function NewProjectPage() {
             </div>
           </div>
 
+          {/* Error */}
+          {createError && (
+            <div className="mt-6 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{createError}</span>
+            </div>
+          )}
+
           {/* Create */}
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
             <Button
               onClick={handleCreate}
               disabled={creating || !form.product_name.trim()}
