@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       companyName,
     } = body
 
-    if (!userId || !submissionId || !productTitle) {
+    if (!userId || !submissionId || !productTitle || !productDescription) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }

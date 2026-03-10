@@ -6,6 +6,13 @@ export async function POST(request: NextRequest) {
   try {
     const { userId, email } = await request.json()
 
+    if (!userId || !email) {
+      return NextResponse.json(
+        { error: 'Missing required fields: userId and email' },
+        { status: 400 }
+      )
+    }
+
     // Initialize Stripe and Supabase inside the handler
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
       apiVersion: '2026-02-25.clover' as any,
