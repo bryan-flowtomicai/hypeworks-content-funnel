@@ -2,6 +2,8 @@
 
 Lead capture + AI A+ content generator at content.hypeworks.io
 
+> **🚨 NEW USER?** See [QUICK_START.md](./QUICK_START.md) for 5-minute setup!
+
 ## Overview
 
 This is a Next.js 14 application that allows Amazon sellers to generate AI-powered A+ content for their product listings.
@@ -71,21 +73,38 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 KIE_AI_API_KEY=7a32f8913ba3942a6a65c5b8d57a11be
 ```
 
-### 3. Database Setup
+### 3. Database Setup ⚠️ REQUIRED
 
-Run the migration in Supabase SQL Editor:
+**The database tables are not created yet!** You must apply the migrations:
 
-```sql
--- See supabase/migrations/001_init.sql
+1. Go to [Supabase SQL Editor](https://supabase.com/dashboard/project/_/sql/new)
+2. Copy and paste the contents of `supabase/migrations/001_init.sql`
+3. Click "Run" to execute
+4. Copy and paste the contents of `supabase/migrations/add_payment_status.sql`
+5. Click "Run" to execute
+
+Verify setup by running:
+```bash
+node check-db.js
 ```
 
-### 4. Run Locally
+### 4. Configure Google OAuth (Optional)
+
+To enable Google sign-in:
+
+1. Go to [Supabase Auth Providers](https://supabase.com/dashboard/project/_/auth/providers)
+2. Enable Google provider
+3. Add Google OAuth credentials (see `SUPABASE_SETUP.md` for details)
+
+### 5. Run Locally
 
 ```bash
 npm run dev
 ```
 
 Visit `http://localhost:3000`
+
+**📖 For detailed setup instructions, see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md)**
 
 ## Database Schema
 
@@ -125,9 +144,10 @@ Visit `http://localhost:3000`
 
 ### Phase 2: Auth & UI ✅
 - [x] Landing page with hero
-- [x] Sign up page (email capture)
-- [x] Sign in page
-- [x] Dashboard
+- [x] Sign up page with email/password and Google OAuth
+- [x] Sign in page with email/password and Google OAuth
+- [x] OAuth callback handler
+- [x] Dashboard with auth protection
 - [x] Responsive design
 - [x] Basic UI components (Button, Input)
 
