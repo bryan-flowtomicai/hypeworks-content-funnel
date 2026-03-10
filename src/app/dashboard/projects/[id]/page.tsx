@@ -36,6 +36,7 @@ export default async function ProjectDetailPage({
 
   const images = (imagesData ?? []) as GeneratedImage[]
   const completedImages = images.filter((img) => img.status === 'complete')
+  const isGenerating = project.status === 'generating'
 
   return (
     <div>
@@ -56,16 +57,20 @@ export default async function ProjectDetailPage({
             {project.brand_name ? ` \u2014 ${project.brand_name}` : ''}
           </p>
         </div>
-        <div className="flex gap-2">
-          <GenerateButton projectId={project.id} />
+        <div className="flex gap-2 shrink-0">
           <DeleteProjectButton projectId={project.id} />
         </div>
       </div>
 
+      {/* Generate button + status banners */}
+      <div className="mt-6">
+        <GenerateButton projectId={project.id} />
+      </div>
+
       {/* Metadata */}
-      <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4">
         {[
-          { label: 'Status', value: project.status },
+          { label: 'Status', value: isGenerating ? 'generating...' : project.status },
           { label: 'Category', value: project.category ?? '\u2014' },
           { label: 'Tone', value: project.content_tone },
           { label: 'Images', value: String(completedImages.length) },
@@ -81,9 +86,26 @@ export default async function ProjectDetailPage({
         ))}
       </div>
 
+      {/* Brand colors preview */}
+      {project.brand_colors?.filter(Boolean).length > 0 && (
+        <div className="mt-4 flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Brand colors
+          </span>
+          {project.brand_colors.filter(Boolean).map((color, i) => (
+            <div
+              key={i}
+              className="h-5 w-5 rounded-full border border-border"
+              style={{ backgroundColor: color }}
+              title={color}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Key features */}
       {project.key_features?.length > 0 && (
-        <div className="mt-8 rounded-xl border border-border bg-card p-6">
+        <div className="mt-6 rounded-xl border border-border bg-card p-6">
           <h2 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             Key features
           </h2>
@@ -107,7 +129,7 @@ export default async function ProjectDetailPage({
           Generated images
         </h2>
 
-        {!completedImages.length ? (
+        {!completedImages.length && !isGenerating ? (
           <div className="mt-4 rounded-xl border border-dashed border-border py-20 text-center">
             <Sparkles className="mx-auto h-8 w-8 text-subtle" />
             <p className="mt-3 text-sm text-muted-foreground">
@@ -131,17 +153,15 @@ export default async function ProjectDetailPage({
                         alt={img.format_type}
                         className="aspect-video w-full object-cover"
                       />
-                      {img.public_url && (
-                        <a
-                          href={img.public_url}
-                          download
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="absolute right-2 top-2 rounded-md bg-black/60 p-2 opacity-100 backdrop-blur-sm transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
-                        >
-                          <Download className="h-4 w-4 text-white" />
-                        </a>
-                      )}
+                      <a
+                        href={img.public_url}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute right-2 top-2 rounded-md bg-black/60 p-2 opacity-100 backdrop-blur-sm transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+                      >
+                        <Download className="h-4 w-4 text-white" />
+                      </a>
                     </div>
                   )}
                   <div className="px-4 py-3">

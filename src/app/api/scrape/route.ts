@@ -66,6 +66,9 @@ type ExtractedProduct = {
   key_features: string[]
   target_audience: string
   category: string
+  display_title: string
+  tagline: string
+  brand_colors: string[]
 }
 
 async function extractWithClaude(
@@ -85,17 +88,24 @@ async function extractWithClaude(
       messages: [
         {
           role: 'user',
-          content: `You are a product data extraction assistant. Analyze the following webpage content from ${sourceUrl} and extract structured product information.
+          content: `You are a product data extraction and branding assistant. Analyze the following webpage content from ${sourceUrl} and extract structured product information.
 
 Return ONLY valid JSON with these fields (no markdown, no explanation):
 {
   "product_name": "full product name without store/site name",
   "brand_name": "brand or manufacturer name",
   "description": "2-3 sentence product description highlighting key selling points",
-  "key_features": ["feature 1", "feature 2", ...up to 8 features],
+  "key_features": ["feature 1", "feature 2", ...up to 8 concise features, max 60 chars each],
   "target_audience": "who this product is for (e.g. 'fitness enthusiasts', 'home office workers')",
-  "category": "product category (e.g. 'Electronics', 'Home & Kitchen')"
+  "category": "product category (e.g. 'Electronics', 'Home & Kitchen')",
+  "display_title": "short, punchy product title for marketing (max 5-7 words, e.g. 'Premium Beef Tallow Face Cream')",
+  "tagline": "one-line marketing tagline (e.g. 'Natural skincare, real results.')",
+  "brand_colors": ["#hex1", "#hex2"] (infer 2-3 brand colors from the page — look for brand imagery, logos, accent colors. Use complementary, professional hex colors that match the brand aesthetic. If unsure, choose colors appropriate for the product category.)
 }
+
+IMPORTANT for display_title: This is NOT the full Amazon product name. Create a short, compelling title suitable for a marketing banner. Strip out specifications, sizes, and SEO keywords.
+
+IMPORTANT for brand_colors: These will be used as accent colors in A+ content design. Pick colors that feel authentic to the brand. For natural/organic products use earth tones. For tech products use blues/grays. For luxury products use golds/blacks.
 
 If a field cannot be determined, use an empty string or empty array.
 
@@ -122,6 +132,14 @@ ${truncated}`,
         : [],
       target_audience: String(parsed.target_audience || '').trim(),
       category: String(parsed.category || '').trim(),
+      display_title: String(parsed.display_title || '').trim(),
+      tagline: String(parsed.tagline || '').trim(),
+      brand_colors: Array.isArray(parsed.brand_colors)
+        ? parsed.brand_colors
+            .map(String)
+            .filter((c: string) => /^#[0-9a-fA-F]{6}$/.test(c))
+            .slice(0, 3)
+        : [],
     }
   } catch (err) {
     console.error('Claude extraction error:', err)
@@ -231,6 +249,10 @@ function extractWithRegex(html: string, url: string): ExtractedProduct {
     .filter((f) => f.length > 5 && f.length < 300)
     .slice(0, 8)
 
+  const shortTitle = productName
+    ? productName.split(/[,.]/).shift()?.trim().substring(0, 50) ?? productName
+    : ''
+
   return {
     product_name: productName ?? '',
     brand_name: brandName ?? '',
@@ -238,6 +260,9 @@ function extractWithRegex(html: string, url: string): ExtractedProduct {
     key_features: features,
     target_audience: '',
     category: category ?? '',
+    display_title: shortTitle,
+    tagline: '',
+    brand_colors: [],
   }
 }
 

@@ -136,9 +136,15 @@ export async function POST(
         }
 
         // ── Phase 2: Composite via Satori + resvg ─────────────────────
+        const scraped = project.scraped_data as Record<string, unknown> | null
+
         const templateData: TemplateData = {
           format,
           productName: project.product_name ?? project.name,
+          displayTitle:
+            (scraped?.display_title as string) ||
+            undefined,
+          tagline: (scraped?.tagline as string) || undefined,
           brandName: project.brand_name ?? undefined,
           keyFeatures: project.key_features ?? [],
           description: project.description ?? undefined,

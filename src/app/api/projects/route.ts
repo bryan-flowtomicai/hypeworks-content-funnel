@@ -50,6 +50,7 @@ export async function POST(request: Request) {
       content_tone: body.content_tone ?? 'professional',
       brand_colors: body.brand_colors ?? [],
       source_urls: body.source_urls ?? [],
+      scraped_data: body.scraped_data ?? null,
     })
     .select()
     .single()

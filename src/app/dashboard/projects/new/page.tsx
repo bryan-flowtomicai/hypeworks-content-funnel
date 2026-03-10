@@ -47,6 +47,7 @@ export default function NewProjectPage() {
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [showManual, setShowManual] = useState(false)
+  const [scrapeData, setScrapeData] = useState<Record<string, unknown> | null>(null)
 
   const [form, setForm] = useState<FormState>({
     name: '',
@@ -87,9 +88,11 @@ export default function NewProjectPage() {
       const data = await res.json()
 
       setForm({
-        name: data.product_name
-          ? `${data.product_name.substring(0, 50)} A+ Content`
-          : '',
+        name: data.display_title
+          ? `${data.display_title} A+ Content`
+          : data.product_name
+            ? `${data.product_name.substring(0, 50)} A+ Content`
+            : '',
         product_name: data.product_name || '',
         brand_name: data.brand_name || '',
         description: data.description || '',
@@ -98,10 +101,16 @@ export default function NewProjectPage() {
         target_audience: data.target_audience || '',
         category: data.category || '',
         content_tone: 'professional',
-        brand_colors: [''],
+        brand_colors:
+          data.brand_colors?.length > 0 ? data.brand_colors : [''],
         source_urls: [url.trim()],
       })
 
+      setScrapeData({
+        display_title: data.display_title || '',
+        tagline: data.tagline || '',
+        brand_colors: data.brand_colors || [],
+      })
       setExtractionMethod(data.extraction_method ?? 'regex')
       setScraped(true)
       setShowManual(true)
@@ -124,6 +133,7 @@ export default function NewProjectPage() {
         key_features: form.key_features.filter(Boolean),
         brand_colors: form.brand_colors.filter(Boolean),
         source_urls: form.source_urls.filter(Boolean),
+        scraped_data: scrapeData,
       }
 
       const res = await fetch('/api/projects', {

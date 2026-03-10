@@ -1,23 +1,32 @@
 import type { TemplateData } from './types'
 
-const PRIMARY = '#c8ff00'
+const FALLBACK_ACCENT = '#4A90D9'
 const DARK = '#0a0a0a'
 const WHITE = '#f5f5f5'
 const MUTED = '#a3a3a3'
 
-function getBrandColor(data: TemplateData, fallback: string): string {
-  return data.brandColors?.find(Boolean) ?? fallback
+function getAccent(data: TemplateData): string {
+  return data.brandColors?.find(Boolean) ?? FALLBACK_ACCENT
+}
+
+function getTitle(data: TemplateData): string {
+  return data.displayTitle || data.productName
 }
 
 function getTopFeatures(data: TemplateData, count: number): string[] {
   return data.keyFeatures.filter(Boolean).slice(0, count)
 }
 
+function truncate(text: string, max: number): string {
+  return text.length > max ? text.substring(0, max) + '...' : text
+}
+
 // ─── Hero: 970x600 ─────────────────────────────────────────────────────────
 
 export function HeroTemplate(data: TemplateData) {
-  const accent = getBrandColor(data, PRIMARY)
+  const accent = getAccent(data)
   const features = getTopFeatures(data, 3)
+  const title = getTitle(data)
 
   return (
     <div
@@ -32,7 +41,6 @@ export function HeroTemplate(data: TemplateData) {
         overflow: 'hidden',
       }}
     >
-      {/* Background image layer */}
       {data.backgroundImageUrl && (
         <img
           src={data.backgroundImageUrl}
@@ -42,7 +50,6 @@ export function HeroTemplate(data: TemplateData) {
         />
       )}
 
-      {/* Dark gradient overlay for text readability */}
       <div
         style={{
           display: 'flex',
@@ -52,11 +59,10 @@ export function HeroTemplate(data: TemplateData) {
           width: 970,
           height: 600,
           background:
-            'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.7) 100%)',
+            'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.05) 35%, rgba(0,0,0,0.65) 100%)',
         }}
       />
 
-      {/* Content */}
       <div
         style={{
           display: 'flex',
@@ -68,7 +74,6 @@ export function HeroTemplate(data: TemplateData) {
           position: 'relative',
         }}
       >
-        {/* Top: brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div
             style={{
@@ -81,7 +86,7 @@ export function HeroTemplate(data: TemplateData) {
           />
           <span
             style={{
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.15em',
@@ -92,13 +97,31 @@ export function HeroTemplate(data: TemplateData) {
           </span>
         </div>
 
-        {/* Bottom: product info + features */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontSize: 36, fontWeight: 800, lineHeight: 1.1 }}>
-              {data.productName}
+            <span
+              style={{
+                fontSize: 42,
+                fontWeight: 800,
+                lineHeight: 1.1,
+                maxWidth: 700,
+              }}
+            >
+              {truncate(title, 50)}
             </span>
-            {data.description && (
+            {data.tagline && (
+              <span
+                style={{
+                  fontSize: 18,
+                  color: MUTED,
+                  lineHeight: 1.4,
+                  maxWidth: 600,
+                }}
+              >
+                {data.tagline}
+              </span>
+            )}
+            {!data.tagline && data.description && (
               <span
                 style={{
                   fontSize: 16,
@@ -107,13 +130,13 @@ export function HeroTemplate(data: TemplateData) {
                   maxWidth: 600,
                 }}
               >
-                {data.description.substring(0, 120)}
+                {truncate(data.description, 100)}
               </span>
             )}
           </div>
 
           {features.length > 0 && (
-            <div style={{ display: 'flex', gap: 16 }}>
+            <div style={{ display: 'flex', gap: 12 }}>
               {features.map((feat, i) => (
                 <div
                   key={i}
@@ -124,7 +147,7 @@ export function HeroTemplate(data: TemplateData) {
                     backgroundColor: 'rgba(0,0,0,0.5)',
                     borderRadius: 8,
                     padding: '10px 16px',
-                    border: `1px solid rgba(255,255,255,0.1)`,
+                    border: '1px solid rgba(255,255,255,0.1)',
                   }}
                 >
                   <div
@@ -137,8 +160,8 @@ export function HeroTemplate(data: TemplateData) {
                       flexShrink: 0,
                     }}
                   />
-                  <span style={{ fontSize: 13, fontWeight: 500, color: WHITE }}>
-                    {feat.length > 45 ? feat.substring(0, 45) + '...' : feat}
+                  <span style={{ fontSize: 12, fontWeight: 500, color: WHITE }}>
+                    {truncate(feat, 40)}
                   </span>
                 </div>
               ))}
@@ -153,8 +176,9 @@ export function HeroTemplate(data: TemplateData) {
 // ─── Standard: 970x300 ─────────────────────────────────────────────────────
 
 export function StandardTemplate(data: TemplateData) {
-  const accent = getBrandColor(data, PRIMARY)
+  const accent = getAccent(data)
   const features = getTopFeatures(data, 3)
+  const title = getTitle(data)
 
   return (
     <div
@@ -168,7 +192,6 @@ export function StandardTemplate(data: TemplateData) {
         overflow: 'hidden',
       }}
     >
-      {/* Left: text content */}
       <div
         style={{
           display: 'flex',
@@ -176,13 +199,13 @@ export function StandardTemplate(data: TemplateData) {
           justifyContent: 'center',
           width: 530,
           padding: '32px 40px',
-          gap: 16,
+          gap: 14,
         }}
       >
         {data.brandName && (
           <span
             style={{
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.15em',
@@ -192,11 +215,14 @@ export function StandardTemplate(data: TemplateData) {
             {data.brandName}
           </span>
         )}
-        <span style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.15 }}>
-          {data.productName.length > 60
-            ? data.productName.substring(0, 60) + '...'
-            : data.productName}
+        <span style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.15 }}>
+          {truncate(title, 45)}
         </span>
+        {data.tagline && (
+          <span style={{ fontSize: 13, color: MUTED }}>
+            {data.tagline}
+          </span>
+        )}
         {features.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {features.map((feat, i) => (
@@ -207,27 +233,21 @@ export function StandardTemplate(data: TemplateData) {
                 <div
                   style={{
                     display: 'flex',
-                    width: 20,
-                    height: 20,
-                    borderRadius: 10,
+                    width: 18,
+                    height: 18,
+                    borderRadius: 9,
                     backgroundColor: accent,
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 800,
-                      color: DARK,
-                    }}
-                  >
+                  <span style={{ fontSize: 10, fontWeight: 800, color: DARK }}>
                     {i + 1}
                   </span>
                 </div>
-                <span style={{ fontSize: 14, color: MUTED }}>
-                  {feat.length > 55 ? feat.substring(0, 55) + '...' : feat}
+                <span style={{ fontSize: 13, color: MUTED }}>
+                  {truncate(feat, 50)}
                 </span>
               </div>
             ))}
@@ -235,7 +255,6 @@ export function StandardTemplate(data: TemplateData) {
         )}
       </div>
 
-      {/* Right: background image */}
       <div
         style={{
           display: 'flex',
@@ -262,7 +281,6 @@ export function StandardTemplate(data: TemplateData) {
             }}
           />
         )}
-        {/* Fade edge */}
         <div
           style={{
             display: 'flex',
@@ -282,8 +300,9 @@ export function StandardTemplate(data: TemplateData) {
 // ─── Square: 600x600 ───────────────────────────────────────────────────────
 
 export function SquareTemplate(data: TemplateData) {
-  const accent = getBrandColor(data, PRIMARY)
+  const accent = getAccent(data)
   const features = getTopFeatures(data, 4)
+  const title = getTitle(data)
 
   return (
     <div
@@ -298,31 +317,29 @@ export function SquareTemplate(data: TemplateData) {
         overflow: 'hidden',
       }}
     >
-      {/* Top: brand bar */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          height: 48,
+          height: 44,
           backgroundColor: accent,
           width: '100%',
         }}
       >
         <span
           style={{
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 800,
             textTransform: 'uppercase',
             letterSpacing: '0.2em',
             color: DARK,
           }}
         >
-          {data.brandName ?? data.productName}
+          {data.brandName ?? truncate(title, 30)}
         </span>
       </div>
 
-      {/* Middle: product image */}
       <div
         style={{
           display: 'flex',
@@ -349,7 +366,6 @@ export function SquareTemplate(data: TemplateData) {
             }}
           />
         )}
-        {/* Bottom fade */}
         <div
           style={{
             display: 'flex',
@@ -363,29 +379,20 @@ export function SquareTemplate(data: TemplateData) {
         />
       </div>
 
-      {/* Bottom: product info + features */}
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          padding: '20px 32px 28px',
-          gap: 14,
+          padding: '18px 28px 24px',
+          gap: 12,
           flex: 1,
         }}
       >
-        <span style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.2 }}>
-          {data.productName.length > 50
-            ? data.productName.substring(0, 50) + '...'
-            : data.productName}
+        <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>
+          {truncate(title, 40)}
         </span>
         {features.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8,
-            }}
-          >
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {features.map((feat, i) => (
               <div
                 key={i}
@@ -393,24 +400,24 @@ export function SquareTemplate(data: TemplateData) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  padding: '6px 12px',
+                  padding: '5px 10px',
                   borderRadius: 6,
-                  border: `1px solid rgba(255,255,255,0.1)`,
+                  border: '1px solid rgba(255,255,255,0.1)',
                   backgroundColor: 'rgba(255,255,255,0.04)',
                 }}
               >
                 <div
                   style={{
                     display: 'flex',
-                    width: 6,
-                    height: 6,
+                    width: 5,
+                    height: 5,
                     borderRadius: 3,
                     backgroundColor: accent,
                     flexShrink: 0,
                   }}
                 />
-                <span style={{ fontSize: 11, color: MUTED }}>
-                  {feat.length > 30 ? feat.substring(0, 30) + '...' : feat}
+                <span style={{ fontSize: 10, color: MUTED }}>
+                  {truncate(feat, 28)}
                 </span>
               </div>
             ))}
@@ -424,7 +431,8 @@ export function SquareTemplate(data: TemplateData) {
 // ─── Portrait: 300x400 ─────────────────────────────────────────────────────
 
 export function PortraitTemplate(data: TemplateData) {
-  const accent = getBrandColor(data, PRIMARY)
+  const accent = getAccent(data)
+  const title = getTitle(data)
 
   return (
     <div
@@ -439,7 +447,6 @@ export function PortraitTemplate(data: TemplateData) {
         overflow: 'hidden',
       }}
     >
-      {/* Top: image */}
       <div
         style={{
           display: 'flex',
@@ -466,7 +473,6 @@ export function PortraitTemplate(data: TemplateData) {
             }}
           />
         )}
-        {/* Bottom fade */}
         <div
           style={{
             display: 'flex',
@@ -480,13 +486,12 @@ export function PortraitTemplate(data: TemplateData) {
         />
       </div>
 
-      {/* Bottom: text */}
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          padding: '16px 24px 24px',
-          gap: 10,
+          padding: '16px 22px 22px',
+          gap: 8,
           flex: 1,
         }}
       >
@@ -503,16 +508,17 @@ export function PortraitTemplate(data: TemplateData) {
             {data.brandName}
           </span>
         )}
-        <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>
-          {data.productName.length > 40
-            ? data.productName.substring(0, 40) + '...'
-            : data.productName}
+        <span style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2 }}>
+          {truncate(title, 35)}
         </span>
-        {data.keyFeatures[0] && (
-          <span style={{ fontSize: 12, color: MUTED, lineHeight: 1.4 }}>
-            {data.keyFeatures[0].length > 80
-              ? data.keyFeatures[0].substring(0, 80) + '...'
-              : data.keyFeatures[0]}
+        {data.tagline && (
+          <span style={{ fontSize: 11, color: MUTED, lineHeight: 1.4 }}>
+            {data.tagline}
+          </span>
+        )}
+        {!data.tagline && data.keyFeatures[0] && (
+          <span style={{ fontSize: 11, color: MUTED, lineHeight: 1.4 }}>
+            {truncate(data.keyFeatures[0], 70)}
           </span>
         )}
       </div>
@@ -523,7 +529,8 @@ export function PortraitTemplate(data: TemplateData) {
 // ─── Banner Wide: 970x130 ──────────────────────────────────────────────────
 
 export function BannerWideTemplate(data: TemplateData) {
-  const accent = getBrandColor(data, PRIMARY)
+  const accent = getAccent(data)
+  const title = getTitle(data)
 
   return (
     <div
@@ -540,7 +547,6 @@ export function BannerWideTemplate(data: TemplateData) {
         gap: 24,
       }}
     >
-      {/* Left accent bar */}
       <div
         style={{
           display: 'flex',
@@ -572,29 +578,16 @@ export function BannerWideTemplate(data: TemplateData) {
           </span>
         )}
         <span
-          style={{
-            fontSize: 24,
-            fontWeight: 800,
-            textAlign: 'center',
-          }}
+          style={{ fontSize: 24, fontWeight: 800, textAlign: 'center' }}
         >
-          {data.productName.length > 50
-            ? data.productName.substring(0, 50) + '...'
-            : data.productName}
+          {truncate(title, 45)}
         </span>
-        {data.description && (
-          <span
-            style={{
-              fontSize: 13,
-              color: MUTED,
-              textAlign: 'center',
-            }}
-          >
-            {data.description.substring(0, 70)}
+        {data.tagline && (
+          <span style={{ fontSize: 13, color: MUTED, textAlign: 'center' }}>
+            {data.tagline}
           </span>
         )}
       </div>
-      {/* Right accent bar */}
       <div
         style={{
           display: 'flex',
