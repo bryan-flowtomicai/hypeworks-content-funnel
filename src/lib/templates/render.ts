@@ -11,19 +11,19 @@ import {
   BannerWideTemplate,
 } from './layouts'
 
-// Direct CDN URLs for Inter font files (stable, no CSS parsing needed)
+// Direct CDN URLs for Inter TTF files (resvg requires TTF, not woff2)
 const FONT_URLS: { weight: number; url: string }[] = [
   {
     weight: 400,
-    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2',
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf',
   },
   {
     weight: 700,
-    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff2',
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.ttf',
   },
   {
     weight: 800,
-    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-800-normal.woff2',
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-800-normal.ttf',
   },
 ]
 
