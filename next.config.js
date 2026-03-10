@@ -7,6 +7,9 @@ const nextConfig = {
       { protocol: 'https', hostname: 'fal.media' },
     ],
   },
+  experimental: {
+    serverComponentsExternalPackages: ['@resvg/resvg-js', 'sharp'],
+  },
 }
 
 module.exports = nextConfig
