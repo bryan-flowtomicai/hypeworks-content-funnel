@@ -11,54 +11,50 @@ import {
   BannerWideTemplate,
 } from './layouts'
 
-let fontData: ArrayBuffer | null = null
+// Direct CDN URLs for Inter font files (stable, no CSS parsing needed)
+const FONT_URLS: { weight: number; url: string }[] = [
+  {
+    weight: 400,
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2',
+  },
+  {
+    weight: 700,
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff2',
+  },
+  {
+    weight: 800,
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-800-normal.woff2',
+  },
+]
 
-async function loadFont(): Promise<ArrayBuffer> {
-  if (fontData) return fontData
-
-  const res = await fetch(
-    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap'
-  )
-  const css = await res.text()
-
-  const fontUrlMatch = css.match(/src:\s*url\(([^)]+)\)\s*format\('woff2'\)/)
-  if (!fontUrlMatch) {
-    throw new Error('Could not extract Inter font URL from Google Fonts CSS')
-  }
-
-  const fontRes = await fetch(fontUrlMatch[1])
-  fontData = await fontRes.arrayBuffer()
-  return fontData
-}
-
-// Fetch multiple weights for better typography
 interface FontWeight {
   weight: number
   data: ArrayBuffer
 }
 
+let cachedFonts: FontWeight[] | null = null
+
 async function loadFonts(): Promise<FontWeight[]> {
-  const weights = [400, 700, 800]
+  if (cachedFonts) return cachedFonts
+
   const fonts: FontWeight[] = []
 
-  for (const weight of weights) {
-    const res = await fetch(
-      `https://fonts.googleapis.com/css2?family=Inter:wght@${weight}&display=swap`,
-      { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' } }
-    )
-    const css = await res.text()
-    const urlMatch = css.match(/src:\s*url\(([^)]+)\)\s*format\('woff2'\)/)
-    if (urlMatch) {
-      const fontRes = await fetch(urlMatch[1])
-      fonts.push({ weight, data: await fontRes.arrayBuffer() })
+  for (const { weight, url } of FONT_URLS) {
+    try {
+      const res = await fetch(url)
+      if (res.ok) {
+        fonts.push({ weight, data: await res.arrayBuffer() })
+      }
+    } catch {
+      // Skip failed font weight
     }
   }
 
   if (fonts.length === 0) {
-    const fallback = await loadFont()
-    return [{ weight: 400, data: fallback }]
+    throw new Error('Failed to load any Inter font weights')
   }
 
+  cachedFonts = fonts
   return fonts
 }
 
