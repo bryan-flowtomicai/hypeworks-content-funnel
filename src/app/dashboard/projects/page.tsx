@@ -36,7 +36,7 @@ export default async function ProjectsPage() {
 
       {!typedProjects.length ? (
         <div className="mt-8 rounded-xl border border-dashed border-border py-20 text-center">
-          <FolderOpen className="mx-auto h-8 w-8 text-muted-foreground/40" />
+          <FolderOpen className="mx-auto h-8 w-8 text-subtle" />
           <p className="mt-3 text-sm text-muted-foreground">
             No projects yet. Create one to start generating A+ content.
           </p>
@@ -80,16 +80,16 @@ export default async function ProjectsPage() {
                 </p>
               )}
               {project.brand_name && (
-                <p className="text-xs text-muted-foreground/60">
+                <p className="text-xs text-muted-foreground">
                   {project.brand_name}
                 </p>
               )}
               <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                <p className="text-[10px] uppercase tracking-wider text-subtle">
                   {new Date(project.created_at).toLocaleDateString()}
                 </p>
                 {project.content_tone && (
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground/40">
+                  <span className="text-[10px] uppercase tracking-wider text-subtle">
                     {project.content_tone}
                   </span>
                 )}

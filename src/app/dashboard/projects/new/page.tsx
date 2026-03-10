@@ -167,7 +167,7 @@ export default function NewProjectPage() {
                 onChange={(e) => update('description', e.target.value)}
                 placeholder="Key selling points, benefits, what makes this product special..."
                 rows={4}
-                className="flex w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary/30"
+                className="flex w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground transition-colors placeholder:text-subtle focus-visible:outline-none focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary/30"
               />
             </div>
             <div>

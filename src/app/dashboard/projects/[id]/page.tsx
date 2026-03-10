@@ -107,7 +107,7 @@ export default async function ProjectDetailPage({
 
         {!completedImages.length ? (
           <div className="mt-4 rounded-xl border border-dashed border-border py-20 text-center">
-            <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/40" />
+            <Sparkles className="mx-auto h-8 w-8 text-subtle" />
             <p className="mt-3 text-sm text-muted-foreground">
               No images yet. Click &quot;Generate&quot; to create A+ content.
             </p>

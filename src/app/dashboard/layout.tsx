@@ -42,7 +42,7 @@ export default async function DashboardLayout({
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="hidden text-xs text-muted-foreground/60 sm:inline">
+            <span className="hidden text-xs text-subtle sm:inline">
               {user.email}
             </span>
             <form action="/auth/signout" method="post">

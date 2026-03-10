@@ -99,7 +99,7 @@ export default async function DashboardPage() {
 
         {!typedProjects.length ? (
           <div className="mt-4 rounded-xl border border-dashed border-border py-20 text-center">
-            <FolderOpen className="mx-auto h-8 w-8 text-muted-foreground/40" />
+            <FolderOpen className="mx-auto h-8 w-8 text-subtle" />
             <p className="mt-3 text-sm text-muted-foreground">
               No projects yet.
             </p>

@@ -10,6 +10,60 @@ import {
   Download,
 } from 'lucide-react'
 
+function HeroGraphic() {
+  const formats = [
+    { label: 'Hero', w: 970, h: 600, cols: 'col-span-2', rows: 'row-span-2' },
+    { label: 'Standard', w: 970, h: 300, cols: 'col-span-2', rows: '' },
+    { label: 'Square', w: 300, h: 300, cols: '', rows: '' },
+    { label: 'Portrait', w: 300, h: 400, cols: '', rows: 'row-span-2' },
+    { label: 'Banner', w: 970, h: 150, cols: 'col-span-2', rows: '' },
+  ]
+
+  return (
+    <div className="relative mx-auto mt-16 max-w-3xl">
+      {/* Glow */}
+      <div className="absolute -inset-8 rounded-3xl bg-primary/[0.06] blur-3xl" />
+      <div className="absolute -inset-4 rounded-2xl bg-primary/[0.03] blur-xl" />
+
+      <div className="relative grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card/80 p-4 backdrop-blur-sm sm:gap-3 sm:p-6">
+        {formats.map((fmt) => (
+          <div
+            key={fmt.label}
+            className={`group relative flex flex-col items-center justify-center overflow-hidden rounded-lg border border-border bg-surface p-3 transition-all hover:border-primary/30 sm:p-4 ${fmt.cols} ${fmt.rows}`}
+          >
+            {/* Shimmer line */}
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-primary/40" />
+              <span className="text-xs font-semibold text-foreground sm:text-sm">
+                {fmt.label}
+              </span>
+            </div>
+            <span className="mt-1 text-[10px] text-subtle sm:text-xs">
+              {fmt.w} &times; {fmt.h}
+            </span>
+
+            {/* Decorative lines suggesting generated content */}
+            <div className="mt-3 flex w-full flex-col gap-1.5">
+              <div className="h-1 w-3/4 rounded-full bg-border" />
+              <div className="h-1 w-1/2 rounded-full bg-border" />
+            </div>
+          </div>
+        ))}
+
+        {/* Floating badge */}
+        <div className="absolute -right-3 -top-3 flex items-center gap-1.5 rounded-full border border-primary/30 bg-black px-3 py-1.5 shadow-lg shadow-primary/10 sm:-right-4 sm:-top-4">
+          <Sparkles className="h-3 w-3 text-primary" />
+          <span className="text-[11px] font-semibold text-primary">
+            AI Generated
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen">
@@ -37,8 +91,8 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative overflow-hidden pt-32 pb-20">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(200,255,0,0.05)_0%,_transparent_60%)]" />
+      <section className="relative overflow-hidden pt-32 pb-24">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(200,255,0,0.07)_0%,_transparent_50%)]" />
         <div className="relative mx-auto max-w-5xl px-6 text-center">
           <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-primary">
             <Sparkles className="h-3 w-3" />
@@ -71,9 +125,12 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <p className="mt-5 text-xs text-muted-foreground/60">
+          <p className="mt-5 text-xs text-subtle">
             5 free generations &middot; No credit card required
           </p>
+
+          {/* Hero graphic */}
+          <HeroGraphic />
         </div>
       </section>
 
@@ -128,7 +185,7 @@ export default function LandingPage() {
             ].map((feature) => (
               <div
                 key={feature.title}
-                className="group bg-card p-8 transition-colors hover:bg-white/[0.02]"
+                className="group bg-card p-8 transition-colors hover:bg-white/[0.03]"
               >
                 <feature.icon className="h-6 w-6 text-primary" />
                 <h3 className="mt-4 text-base font-semibold">
@@ -144,7 +201,10 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="border-t border-border bg-surface py-24">
+      <section
+        id="how-it-works"
+        className="border-t border-border bg-surface py-24"
+      >
         <div className="mx-auto max-w-5xl px-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">
             How it works
@@ -153,7 +213,7 @@ export default function LandingPage() {
             From product to A+ content in 4 steps.
           </h2>
 
-          <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             {[
               {
                 step: '01',
@@ -180,11 +240,11 @@ export default function LandingPage() {
                 desc: 'Export Amazon-ready images and upload directly to Seller Central.',
               },
             ].map((item) => (
-              <div key={item.step}>
-                <span className="text-3xl font-black text-primary/20">
+              <div key={item.step} className="group">
+                <span className="text-3xl font-black text-primary/25">
                   {item.step}
                 </span>
-                <item.icon className="mt-3 h-5 w-5 text-foreground" />
+                <item.icon className="mt-3 h-5 w-5 text-foreground/80" />
                 <h3 className="mt-3 text-base font-semibold">{item.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {item.desc}
@@ -250,7 +310,7 @@ export default function LandingPage() {
                 key={plan.name}
                 className={`relative rounded-xl border p-8 transition-colors ${
                   plan.highlight
-                    ? 'border-primary/40 bg-primary/[0.03]'
+                    ? 'border-primary/40 bg-primary/[0.04]'
                     : 'border-border bg-card hover:border-white/10'
                 }`}
               >
@@ -272,9 +332,9 @@ export default function LandingPage() {
                   {plan.features.map((f) => (
                     <li
                       key={f}
-                      className="flex items-center gap-2 text-sm text-muted-foreground"
+                      className="flex items-center gap-2.5 text-sm text-muted-foreground"
                     >
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-primary/60" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
                       {f}
                     </li>
                   ))}
@@ -284,7 +344,7 @@ export default function LandingPage() {
                   className={`mt-8 block rounded-md py-2.5 text-center text-sm font-semibold uppercase tracking-wide transition-all active:scale-[0.98] ${
                     plan.highlight
                       ? 'bg-primary text-primary-foreground hover:brightness-110'
-                      : 'border border-border text-muted-foreground hover:border-white/20 hover:text-foreground'
+                      : 'border border-border text-foreground hover:border-white/20 hover:bg-white/[0.03]'
                   }`}
                 >
                   Get started
@@ -304,8 +364,8 @@ export default function LandingPage() {
             and start <span className="text-primary">selling</span>?
           </h2>
           <p className="mx-auto mt-4 max-w-md text-muted-foreground">
-            Get your first 5 A+ content generations free. See the quality
-            before you commit.
+            Get your first 5 A+ content generations free. See the quality before
+            you commit.
           </p>
           <Link
             href="/signup"
@@ -313,7 +373,7 @@ export default function LandingPage() {
           >
             GET STARTED FREE <ArrowRight className="h-4 w-4" />
           </Link>
-          <p className="mt-4 text-xs text-muted-foreground/60">
+          <p className="mt-4 text-xs text-subtle">
             No commitment. No credit card. Just results.
           </p>
         </div>
@@ -325,7 +385,7 @@ export default function LandingPage() {
           <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Hypeworks
           </span>
-          <p className="text-xs text-muted-foreground/50">
+          <p className="text-xs text-subtle">
             &copy; {new Date().getFullYear()} Hypeworks. All rights reserved.
           </p>
         </div>

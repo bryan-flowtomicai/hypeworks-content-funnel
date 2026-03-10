@@ -94,7 +94,7 @@ export default function SignUpPage() {
             of days. 5 free generations to start.
           </p>
         </div>
-        <p className="text-xs text-muted-foreground/40">
+        <p className="text-xs text-subtle">
           &copy; {new Date().getFullYear()} Hypeworks
         </p>
       </div>
@@ -183,7 +183,7 @@ export default function SignUpPage() {
               <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-background px-3 text-[10px] uppercase tracking-widest text-muted-foreground/50">
+              <span className="bg-background px-3 text-[10px] uppercase tracking-widest text-subtle">
                 or
               </span>
             </div>
