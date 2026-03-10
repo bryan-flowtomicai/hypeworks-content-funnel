@@ -125,6 +125,13 @@ This means the migrations haven't been applied yet. Follow Step 1 above.
 
 This is normal if you're trying to sign in before creating an account. Use the sign-up page first.
 
+### "email rate limit exceeded" error
+
+Supabase has rate limiting to prevent spam. If you see this error:
+- Wait 15-60 minutes before trying again
+- Or adjust rate limit settings in: https://supabase.com/dashboard/project/_/auth/rate-limits
+- This is a security feature and confirms your auth system is working correctly!
+
 ## What's Fixed
 
 ✅ Created `/auth/signup` page with email/password and Google OAuth  

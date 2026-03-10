@@ -59,6 +59,13 @@ If you want the "Continue with Google" button to work:
 2. Verify database migration was applied: `node check-db.js`
 3. Check Supabase logs: https://supabase.com/dashboard/project/_/auth/logs
 
+### "email rate limit exceeded" error?
+
+- This is Supabase's security feature to prevent spam
+- Wait 15-60 minutes and try again
+- Or adjust rate limits in Supabase dashboard
+- **Good news:** This confirms your auth system is working!
+
 ### Google OAuth not working?
 
 - That's expected! It needs to be configured (see `GOOGLE_OAUTH_SETUP.md`)
