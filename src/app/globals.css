@@ -44,3 +44,61 @@ body {
   background-color: var(--color-primary);
   color: var(--color-primary-foreground);
 }
+
+.text-gradient {
+  background: linear-gradient(135deg, #c8ff00 0%, #a0d900 50%, #e0ff66 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.card-glow {
+  position: relative;
+}
+
+.card-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(200, 255, 0, 0.2),
+    transparent 40%,
+    transparent 60%,
+    rgba(200, 255, 0, 0.08)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.card-glow:hover::before {
+  background: linear-gradient(
+    135deg,
+    rgba(200, 255, 0, 0.35),
+    transparent 40%,
+    transparent 60%,
+    rgba(200, 255, 0, 0.15)
+  );
+}
+
+details summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] summary .faq-chevron {
+  transform: rotate(180deg);
+}
+
+.faq-chevron {
+  transition: transform 0.2s ease;
+}
