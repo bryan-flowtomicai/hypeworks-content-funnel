@@ -17,6 +17,7 @@ import {
   Star,
   Check,
 } from 'lucide-react'
+import { MobileMenu } from '@/components/mobile-menu'
 
 /* ---------- Hero Format Grid ---------- */
 function HeroGraphic() {
@@ -73,7 +74,7 @@ export default function LandingPage() {
     <div className="min-h-screen">
       {/* ─── Nav ─── */}
       <nav className="fixed top-0 z-50 w-full border-b border-white/5 bg-black/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="relative mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <span className="text-lg font-extrabold uppercase tracking-widest">
             Hypeworks
           </span>
@@ -90,7 +91,7 @@ export default function LandingPage() {
               )
             )}
           </div>
-          <div className="flex items-center gap-5">
+          <div className="hidden items-center gap-5 sm:flex">
             <Link
               href="/login"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -104,6 +105,7 @@ export default function LandingPage() {
               GET STARTED
             </Link>
           </div>
+          <MobileMenu />
         </div>
       </nav>
 
@@ -116,7 +118,7 @@ export default function LandingPage() {
             AI-powered A+ content for Amazon
           </div>
 
-          <h1 className="text-5xl font-black uppercase leading-[1.05] tracking-tight sm:text-7xl lg:text-8xl">
+          <h1 className="text-4xl font-black uppercase leading-[1.05] tracking-tight sm:text-6xl lg:text-8xl">
             A+ Content
             <br />
             <span className="text-gradient">That Converts.</span>
@@ -172,7 +174,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Pain Points ─── */}
-      <section className="py-24">
+      <section className="py-16 sm:py-24">
         <div className="mx-auto max-w-5xl px-6">
           <div className="text-center">
             <p className="text-xs font-semibold uppercase tracking-widest text-primary">
@@ -235,7 +237,7 @@ export default function LandingPage() {
       {/* ─── Capabilities ─── */}
       <section
         id="capabilities"
-        className="border-t border-border bg-surface py-24"
+        className="border-t border-border bg-surface py-16 sm:py-24"
       >
         <div className="mx-auto max-w-5xl px-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">
@@ -334,7 +336,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── How it works ─── */}
-      <section id="how-it-works" className="border-t border-border py-24">
+      <section id="how-it-works" className="border-t border-border py-16 sm:py-24">
         <div className="mx-auto max-w-5xl px-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">
             #Process
@@ -400,7 +402,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Comparison ─── */}
-      <section className="border-t border-border bg-surface py-24">
+      <section className="border-t border-border bg-surface py-16 sm:py-24">
         <div className="mx-auto max-w-5xl px-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">
             Why Hypeworks wins
@@ -464,7 +466,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── Testimonials ─── */}
-      <section className="border-t border-border py-24">
+      <section className="border-t border-border py-16 sm:py-24">
         <div className="mx-auto max-w-5xl px-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">
             #Testimonials
@@ -527,7 +529,7 @@ export default function LandingPage() {
       {/* ─── Pricing ─── */}
       <section
         id="pricing"
-        className="border-t border-border bg-surface py-24"
+        className="border-t border-border bg-surface py-16 sm:py-24"
       >
         <div className="mx-auto max-w-5xl px-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">
@@ -632,7 +634,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── FAQ ─── */}
-      <section id="faq" className="border-t border-border py-24">
+      <section id="faq" className="border-t border-border py-16 sm:py-24">
         <div className="mx-auto max-w-3xl px-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">
             #FAQ
@@ -684,7 +686,7 @@ export default function LandingPage() {
 
       {/* ─── CTA ─── */}
       <section className="border-t border-border bg-surface">
-        <div className="relative mx-auto max-w-3xl px-6 py-24 text-center">
+        <div className="relative mx-auto max-w-3xl px-6 py-16 text-center sm:py-24">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(200,255,0,0.05)_0%,_transparent_60%)]" />
           <div className="relative">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
@@ -788,7 +790,7 @@ export default function LandingPage() {
               </ul>
             </div>
           </div>
-          <div className="mt-10 flex items-center justify-between border-t border-border pt-6">
+          <div className="mt-10 flex flex-col items-center gap-2 border-t border-border pt-6 text-center sm:flex-row sm:justify-between sm:text-left">
             <p className="text-xs text-subtle">
               &copy; {new Date().getFullYear()} Hypeworks. All rights reserved.
             </p>

@@ -56,7 +56,7 @@ export function GenerateButton({ projectId }: { projectId: string }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-8">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 sm:p-8">
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-lg font-bold">Select formats</h3>
@@ -101,7 +101,7 @@ export function GenerateButton({ projectId }: { projectId: string }) {
             </label>
           ))}
         </div>
-        <div className="mt-8 flex justify-end gap-2">
+        <div className="mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
             variant="outline"
             onClick={() => setShowPicker(false)}

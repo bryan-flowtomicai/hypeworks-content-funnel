@@ -44,10 +44,10 @@ export default async function SettingsPage() {
             ].map((row) => (
               <div
                 key={row.label}
-                className="flex items-center justify-between px-6 py-3.5 text-sm"
+                className="flex items-center justify-between gap-4 px-4 py-3.5 text-sm sm:px-6"
               >
-                <span className="text-muted-foreground">{row.label}</span>
-                <span className="font-medium">{row.value}</span>
+                <span className="shrink-0 text-muted-foreground">{row.label}</span>
+                <span className="truncate font-medium">{row.value}</span>
               </div>
             ))}
           </div>

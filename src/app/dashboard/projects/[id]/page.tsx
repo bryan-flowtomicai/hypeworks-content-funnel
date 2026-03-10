@@ -46,9 +46,11 @@ export default async function ProjectDetailPage({
         <ArrowLeft className="h-3 w-3" /> Back to projects
       </Link>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
+            {project.name}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {project.product_name ?? 'No product name'}
             {project.brand_name ? ` \u2014 ${project.brand_name}` : ''}
@@ -61,7 +63,7 @@ export default async function ProjectDetailPage({
       </div>
 
       {/* Metadata */}
-      <div className="mt-8 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4">
+      <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4">
         {[
           { label: 'Status', value: project.status },
           { label: 'Category', value: project.category ?? '\u2014' },
@@ -135,7 +137,7 @@ export default async function ProjectDetailPage({
                           download
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="absolute right-2 top-2 rounded-md bg-black/60 p-2 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"
+                          className="absolute right-2 top-2 rounded-md bg-black/60 p-2 opacity-100 backdrop-blur-sm transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
                         >
                           <Download className="h-4 w-4 text-white" />
                         </a>

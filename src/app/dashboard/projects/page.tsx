@@ -19,16 +19,16 @@ export default async function ProjectsPage() {
 
   return (
     <div>
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Projects</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {typedProjects.length} project{typedProjects.length !== 1 ? 's' : ''} total
           </p>
         </div>
         <Link
           href="/dashboard/projects/new"
-          className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98]"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] sm:w-auto"
         >
           <Plus className="h-4 w-4" /> New project
         </Link>

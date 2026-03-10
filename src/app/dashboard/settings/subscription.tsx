@@ -77,7 +77,7 @@ export function SubscriptionSection({
         ].map((row) => (
           <div
             key={row.label}
-            className="flex items-center justify-between px-6 py-3.5 text-sm"
+            className="flex items-center justify-between gap-4 px-4 py-3.5 text-sm sm:px-6"
           >
             <span className="text-muted-foreground">{row.label}</span>
             <span
@@ -91,7 +91,7 @@ export function SubscriptionSection({
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t border-border px-6 py-5">
+      <div className="flex flex-col gap-2 border-t border-border px-4 py-5 sm:flex-row sm:flex-wrap sm:px-6">
         {tier === 'free' && (
           <>
             <Button
