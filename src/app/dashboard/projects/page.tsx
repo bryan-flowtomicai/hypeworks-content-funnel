@@ -19,74 +19,81 @@ export default async function ProjectsPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Projects</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            All your A+ content projects
+            {typedProjects.length} project{typedProjects.length !== 1 ? 's' : ''} total
           </p>
         </div>
         <Link
           href="/dashboard/projects/new"
-          className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98]"
         >
           <Plus className="h-4 w-4" /> New project
         </Link>
       </div>
 
       {!typedProjects.length ? (
-        <div className="rounded-xl border border-dashed border-border py-16 text-center">
-          <FolderOpen className="mx-auto h-10 w-10 text-muted-foreground" />
+        <div className="mt-8 rounded-xl border border-dashed border-border py-20 text-center">
+          <FolderOpen className="mx-auto h-8 w-8 text-muted-foreground/40" />
           <p className="mt-3 text-sm text-muted-foreground">
-            No projects yet. Create your first one to get started.
+            No projects yet. Create one to start generating A+ content.
           </p>
           <Link
             href="/dashboard/projects/new"
-            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
           >
             <Plus className="h-3 w-3" /> Create project
           </Link>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {typedProjects.map((project) => (
             <Link
               key={project.id}
               href={`/dashboard/projects/${project.id}`}
-              className="group rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/30"
+              className="group rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/20 hover:bg-white/[0.02]"
             >
               <div className="flex items-start justify-between">
-                <h3 className="font-semibold group-hover:text-primary transition-colors">
+                <h3 className="font-semibold transition-colors group-hover:text-primary">
                   {project.name}
                 </h3>
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                     project.status === 'complete'
-                      ? 'bg-green-500/10 text-green-400'
+                      ? 'bg-primary/10 text-primary'
                       : project.status === 'generating'
                         ? 'bg-yellow-500/10 text-yellow-400'
-                        : 'bg-secondary text-muted-foreground'
+                        : 'bg-white/5 text-muted-foreground'
                   }`}
                 >
                   {project.status === 'generating' && (
-                    <Sparkles className="h-3 w-3" />
+                    <Sparkles className="mr-0.5 inline h-3 w-3" />
                   )}
                   {project.status}
                 </span>
               </div>
               {project.product_name && (
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm text-muted-foreground">
                   {project.product_name}
                 </p>
               )}
               {project.brand_name && (
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground/60">
                   {project.brand_name}
                 </p>
               )}
-              <p className="mt-3 text-xs text-muted-foreground">
-                {new Date(project.created_at).toLocaleDateString()}
-              </p>
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                  {new Date(project.created_at).toLocaleDateString()}
+                </p>
+                {project.content_tone && (
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground/40">
+                    {project.content_tone}
+                  </span>
+                )}
+              </div>
             </Link>
           ))}
         </div>

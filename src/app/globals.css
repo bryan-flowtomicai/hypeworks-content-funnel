@@ -3,24 +3,25 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  --color-background: #0a0a0f;
-  --color-foreground: #f4f4f5;
-  --color-card: #18181b;
-  --color-card-foreground: #f4f4f5;
-  --color-primary: #6366f1;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #27272a;
-  --color-secondary-foreground: #f4f4f5;
-  --color-muted: #27272a;
-  --color-muted-foreground: #a1a1aa;
-  --color-accent: #6366f1;
-  --color-accent-foreground: #f4f4f5;
-  --color-destructive: #ef4444;
-  --color-border: #27272a;
-  --color-input: #27272a;
-  --color-ring: #6366f1;
+  --color-background: #000000;
+  --color-foreground: #fafafa;
+  --color-card: #0a0a0a;
+  --color-card-foreground: #fafafa;
+  --color-primary: #c8ff00;
+  --color-primary-foreground: #000000;
+  --color-secondary: #141414;
+  --color-secondary-foreground: #fafafa;
+  --color-muted: #141414;
+  --color-muted-foreground: #737373;
+  --color-accent: #c8ff00;
+  --color-accent-foreground: #000000;
+  --color-destructive: #ff3333;
+  --color-border: #1a1a1a;
+  --color-input: #141414;
+  --color-ring: #c8ff00;
+  --color-surface: #0d0d0d;
 
-  --radius-sm: 0.25rem;
+  --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
@@ -36,4 +37,9 @@ body {
   color: var(--color-foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
 }

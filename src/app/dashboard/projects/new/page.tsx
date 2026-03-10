@@ -49,7 +49,11 @@ export default function NewProjectPage() {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  function updateListItem(field: 'key_features' | 'brand_colors' | 'source_urls', idx: number, value: string) {
+  function updateListItem(
+    field: 'key_features' | 'brand_colors' | 'source_urls',
+    idx: number,
+    value: string
+  ) {
     setForm((prev) => {
       const list = [...prev[field]]
       list[idx] = value
@@ -57,11 +61,16 @@ export default function NewProjectPage() {
     })
   }
 
-  function addListItem(field: 'key_features' | 'brand_colors' | 'source_urls') {
+  function addListItem(
+    field: 'key_features' | 'brand_colors' | 'source_urls'
+  ) {
     setForm((prev) => ({ ...prev, [field]: [...prev[field], ''] }))
   }
 
-  function removeListItem(field: 'key_features' | 'brand_colors' | 'source_urls', idx: number) {
+  function removeListItem(
+    field: 'key_features' | 'brand_colors' | 'source_urls',
+    idx: number
+  ) {
     setForm((prev) => ({
       ...prev,
       [field]: prev[field].filter((_, i) => i !== idx),
@@ -88,8 +97,7 @@ export default function NewProjectPage() {
 
       const project = await res.json()
       router.push(`/dashboard/projects/${project.id}`)
-    } catch (err) {
-      console.error(err)
+    } catch {
       alert('Failed to create project. Please try again.')
     } finally {
       setLoading(false)
@@ -100,32 +108,40 @@ export default function NewProjectPage() {
     <div className="mx-auto max-w-2xl">
       <Link
         href="/dashboard/projects"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="mb-8 inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
       >
-        <ArrowLeft className="h-3 w-3" /> Back to projects
+        <ArrowLeft className="h-3 w-3" /> Back
       </Link>
 
-      <h1 className="text-2xl font-bold">Create project</h1>
+      <h1 className="text-2xl font-bold tracking-tight">New project</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Step {step} of 3 — {step === 1 ? 'Product details' : step === 2 ? 'Brand & style' : 'Review'}
+        Step {step} of 3 &mdash;{' '}
+        {step === 1
+          ? 'Product details'
+          : step === 2
+            ? 'Brand & style'
+            : 'Review & create'}
       </p>
 
+      {/* Progress */}
       <div className="mt-6 flex gap-1.5">
         {[1, 2, 3].map((s) => (
           <div
             key={s}
-            className={`h-1.5 flex-1 rounded-full transition-colors ${
+            className={`h-1 flex-1 rounded-full transition-colors ${
               s <= step ? 'bg-primary' : 'bg-border'
             }`}
           />
         ))}
       </div>
 
-      <div className="mt-8 rounded-xl border border-border bg-card p-6">
+      <div className="mt-8 rounded-xl border border-border bg-card p-8">
         {step === 1 && (
           <div className="space-y-5">
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Project name *</label>
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Project name *
+              </label>
               <Input
                 value={form.name}
                 onChange={(e) => update('name', e.target.value)}
@@ -133,7 +149,9 @@ export default function NewProjectPage() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Product name *</label>
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Product name *
+              </label>
               <Input
                 value={form.product_name}
                 onChange={(e) => update('product_name', e.target.value)}
@@ -141,29 +159,35 @@ export default function NewProjectPage() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Product description</label>
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Description
+              </label>
               <textarea
                 value={form.description}
                 onChange={(e) => update('description', e.target.value)}
-                placeholder="Describe your product, features, and benefits..."
+                placeholder="Key selling points, benefits, what makes this product special..."
                 rows={4}
-                className="flex w-full rounded-md border border-border bg-input px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary/30"
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Key features</label>
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Key features
+              </label>
               {form.key_features.map((feat, i) => (
                 <div key={i} className="mb-2 flex gap-2">
                   <Input
                     value={feat}
-                    onChange={(e) => updateListItem('key_features', i, e.target.value)}
+                    onChange={(e) =>
+                      updateListItem('key_features', i, e.target.value)
+                    }
                     placeholder={`Feature ${i + 1}`}
                   />
                   {form.key_features.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeListItem('key_features', i)}
-                      className="text-xs text-muted-foreground hover:text-destructive"
+                      className="shrink-0 text-xs text-muted-foreground hover:text-destructive"
                     >
                       Remove
                     </button>
@@ -173,27 +197,33 @@ export default function NewProjectPage() {
               <button
                 type="button"
                 onClick={() => addListItem('key_features')}
-                className="text-xs text-primary hover:underline"
+                className="text-xs font-semibold text-primary hover:underline"
               >
                 + Add feature
               </button>
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block text-sm font-medium">Category</label>
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Category
+                </label>
                 <select
                   value={form.category}
                   onChange={(e) => update('category', e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary/30"
                 >
-                  <option value="">Select category</option>
+                  <option value="">Select</option>
                   {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium">Target audience</label>
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Target audience
+                </label>
                 <Input
                   value={form.target_audience}
                   onChange={(e) => update('target_audience', e.target.value)}
@@ -207,7 +237,9 @@ export default function NewProjectPage() {
         {step === 2 && (
           <div className="space-y-5">
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Brand name</label>
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Brand name
+              </label>
               <Input
                 value={form.brand_name}
                 onChange={(e) => update('brand_name', e.target.value)}
@@ -215,17 +247,19 @@ export default function NewProjectPage() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Content tone</label>
+              <label className="mb-3 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Content tone
+              </label>
               <div className="flex flex-wrap gap-2">
                 {TONES.map((t) => (
                   <button
                     key={t.value}
                     type="button"
                     onClick={() => update('content_tone', t.value)}
-                    className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                    className={`rounded-md border px-4 py-2 text-sm font-medium transition-all ${
                       form.content_tone === t.value
                         ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border hover:border-primary/30'
+                        : 'border-border text-muted-foreground hover:border-white/20 hover:text-foreground'
                     }`}
                   >
                     {t.label}
@@ -234,19 +268,23 @@ export default function NewProjectPage() {
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Brand colors (hex)</label>
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Brand colors
+              </label>
               {form.brand_colors.map((color, i) => (
                 <div key={i} className="mb-2 flex gap-2">
                   <Input
                     value={color}
-                    onChange={(e) => updateListItem('brand_colors', i, e.target.value)}
-                    placeholder="#6366f1"
+                    onChange={(e) =>
+                      updateListItem('brand_colors', i, e.target.value)
+                    }
+                    placeholder="#c8ff00"
                   />
                   {form.brand_colors.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeListItem('brand_colors', i)}
-                      className="text-xs text-muted-foreground hover:text-destructive"
+                      className="shrink-0 text-xs text-muted-foreground hover:text-destructive"
                     >
                       Remove
                     </button>
@@ -256,27 +294,29 @@ export default function NewProjectPage() {
               <button
                 type="button"
                 onClick={() => addListItem('brand_colors')}
-                className="text-xs text-primary hover:underline"
+                className="text-xs font-semibold text-primary hover:underline"
               >
                 + Add color
               </button>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium">
-                Source URLs (Amazon, Shopify, etc.)
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Source URLs
               </label>
               {form.source_urls.map((url, i) => (
                 <div key={i} className="mb-2 flex gap-2">
                   <Input
                     value={url}
-                    onChange={(e) => updateListItem('source_urls', i, e.target.value)}
+                    onChange={(e) =>
+                      updateListItem('source_urls', i, e.target.value)
+                    }
                     placeholder="https://www.amazon.com/dp/..."
                   />
                   {form.source_urls.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeListItem('source_urls', i)}
-                      className="text-xs text-muted-foreground hover:text-destructive"
+                      className="shrink-0 text-xs text-muted-foreground hover:text-destructive"
                     >
                       Remove
                     </button>
@@ -286,7 +326,7 @@ export default function NewProjectPage() {
               <button
                 type="button"
                 onClick={() => addListItem('source_urls')}
-                className="text-xs text-primary hover:underline"
+                className="text-xs font-semibold text-primary hover:underline"
               >
                 + Add URL
               </button>
@@ -296,32 +336,32 @@ export default function NewProjectPage() {
 
         {step === 3 && (
           <div className="space-y-4">
-            <h3 className="font-semibold">Review your project</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Review
+            </h3>
             <div className="space-y-3 text-sm">
-              <div className="flex justify-between border-b border-border pb-2">
-                <span className="text-muted-foreground">Project</span>
-                <span>{form.name || '—'}</span>
-              </div>
-              <div className="flex justify-between border-b border-border pb-2">
-                <span className="text-muted-foreground">Product</span>
-                <span>{form.product_name || '—'}</span>
-              </div>
-              <div className="flex justify-between border-b border-border pb-2">
-                <span className="text-muted-foreground">Brand</span>
-                <span>{form.brand_name || '—'}</span>
-              </div>
-              <div className="flex justify-between border-b border-border pb-2">
-                <span className="text-muted-foreground">Category</span>
-                <span>{form.category || '—'}</span>
-              </div>
-              <div className="flex justify-between border-b border-border pb-2">
-                <span className="text-muted-foreground">Tone</span>
-                <span className="capitalize">{form.content_tone}</span>
-              </div>
-              <div className="flex justify-between border-b border-border pb-2">
-                <span className="text-muted-foreground">Features</span>
-                <span>{form.key_features.filter(Boolean).length} items</span>
-              </div>
+              {[
+                ['Project', form.name],
+                ['Product', form.product_name],
+                ['Brand', form.brand_name],
+                ['Category', form.category],
+                ['Tone', form.content_tone],
+                [
+                  'Features',
+                  `${form.key_features.filter(Boolean).length} items`,
+                ],
+                ['URLs', `${form.source_urls.filter(Boolean).length} linked`],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="flex justify-between border-b border-border pb-2"
+                >
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-medium capitalize">
+                    {value || '\u2014'}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -333,7 +373,7 @@ export default function NewProjectPage() {
           onClick={() => setStep(Math.max(1, step - 1))}
           disabled={step === 1}
         >
-          <ArrowLeft className="mr-1 h-4 w-4" /> Back
+          <ArrowLeft className="mr-1.5 h-4 w-4" /> Back
         </Button>
 
         {step < 3 ? (
@@ -341,16 +381,17 @@ export default function NewProjectPage() {
             onClick={() => setStep(step + 1)}
             disabled={step === 1 && (!form.name || !form.product_name)}
           >
-            Next <ArrowRight className="ml-1 h-4 w-4" />
+            Next <ArrowRight className="ml-1.5 h-4 w-4" />
           </Button>
         ) : (
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? (
               <>
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Creating...
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />{' '}
+                Creating...
               </>
             ) : (
-              'Create project'
+              'CREATE PROJECT'
             )}
           </Button>
         )}

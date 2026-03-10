@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { IMAGE_FORMATS, type ImageFormatType } from '@/types'
-import { Loader2, Sparkles, Trash2 } from 'lucide-react'
+import { Loader2, Sparkles, Trash2, X } from 'lucide-react'
 
 export function GenerateButton({ projectId }: { projectId: string }) {
   const router = useRouter()
@@ -49,46 +49,59 @@ export function GenerateButton({ projectId }: { projectId: string }) {
   if (!showPicker) {
     return (
       <Button onClick={() => setShowPicker(true)}>
-        <Sparkles className="mr-1 h-4 w-4" /> Generate
+        <Sparkles className="mr-1.5 h-4 w-4" /> Generate
       </Button>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6">
-        <h3 className="text-lg font-semibold">Select formats</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Choose the A+ content formats to generate.
-        </p>
-        <div className="mt-4 space-y-2">
-          {(Object.entries(IMAGE_FORMATS) as [ImageFormatType, (typeof IMAGE_FORMATS)[ImageFormatType]][]).map(
-            ([key, spec]) => (
-              <label
-                key={key}
-                className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors ${
-                  selectedFormats.includes(key)
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/30'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedFormats.includes(key)}
-                    onChange={() => toggleFormat(key)}
-                    className="h-4 w-4 accent-primary"
-                  />
-                  <span className="text-sm font-medium">{spec.label}</span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {spec.width} x {spec.height}
-                </span>
-              </label>
-            )
-          )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-8">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="text-lg font-bold">Select formats</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Choose the A+ content formats to generate.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowPicker(false)}
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
-        <div className="mt-6 flex gap-2 justify-end">
+        <div className="mt-6 space-y-2">
+          {(
+            Object.entries(IMAGE_FORMATS) as [
+              ImageFormatType,
+              (typeof IMAGE_FORMATS)[ImageFormatType],
+            ][]
+          ).map(([key, spec]) => (
+            <label
+              key={key}
+              className={`flex cursor-pointer items-center justify-between rounded-lg border p-3.5 transition-all ${
+                selectedFormats.includes(key)
+                  ? 'border-primary/40 bg-primary/5'
+                  : 'border-border hover:border-white/10'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={selectedFormats.includes(key)}
+                  onChange={() => toggleFormat(key)}
+                  className="h-4 w-4 accent-[#c8ff00]"
+                />
+                <span className="text-sm font-medium">{spec.label}</span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {spec.width} &times; {spec.height}
+              </span>
+            </label>
+          ))}
+        </div>
+        <div className="mt-8 flex justify-end gap-2">
           <Button
             variant="outline"
             onClick={() => setShowPicker(false)}
@@ -102,10 +115,11 @@ export function GenerateButton({ projectId }: { projectId: string }) {
           >
             {loading ? (
               <>
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Generating...
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />{' '}
+                Generating...
               </>
             ) : (
-              `Generate ${selectedFormats.length} image${selectedFormats.length !== 1 ? 's' : ''}`
+              `GENERATE ${selectedFormats.length} IMAGE${selectedFormats.length !== 1 ? 'S' : ''}`
             )}
           </Button>
         </div>
@@ -119,7 +133,12 @@ export function DeleteProjectButton({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState(false)
 
   async function handleDelete() {
-    if (!confirm('Delete this project and all its images? This cannot be undone.')) return
+    if (
+      !confirm(
+        'Delete this project and all its images? This cannot be undone.'
+      )
+    )
+      return
 
     setLoading(true)
     try {
@@ -137,7 +156,7 @@ export function DeleteProjectButton({ projectId }: { projectId: string }) {
 
   return (
     <Button variant="outline" onClick={handleDelete} disabled={loading}>
-      <Trash2 className="mr-1 h-4 w-4" />
+      <Trash2 className="mr-1.5 h-4 w-4" />
       {loading ? 'Deleting...' : 'Delete'}
     </Button>
   )

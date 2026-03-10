@@ -16,39 +16,39 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen">
-      <nav className="border-b border-border bg-card/50">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-8">
-            <Link href="/dashboard" className="text-lg font-bold tracking-tight">
+      <nav className="border-b border-border bg-surface/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
+          <div className="flex items-center gap-10">
+            <Link
+              href="/dashboard"
+              className="text-sm font-extrabold uppercase tracking-widest"
+            >
               Hypeworks
             </Link>
-            <div className="flex items-center gap-4 text-sm">
-              <Link
-                href="/dashboard"
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/dashboard/projects"
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Projects
-              </Link>
-              <Link
-                href="/dashboard/settings"
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Settings
-              </Link>
+            <div className="hidden items-center gap-6 sm:flex">
+              {[
+                { href: '/dashboard', label: 'Overview' },
+                { href: '/dashboard/projects', label: 'Projects' },
+                { href: '/dashboard/settings', label: 'Settings' },
+              ].map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {link.label}
+                </Link>
+              ))}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">{user.email}</span>
+          <div className="flex items-center gap-4">
+            <span className="hidden text-xs text-muted-foreground/60 sm:inline">
+              {user.email}
+            </span>
             <form action="/auth/signout" method="post">
               <button
                 type="submit"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
               >
                 Sign out
               </button>
@@ -56,7 +56,7 @@ export default async function DashboardLayout({
           </div>
         </div>
       </nav>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
     </div>
   )
 }

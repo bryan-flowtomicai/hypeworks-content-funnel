@@ -2,7 +2,12 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { TIER_LIMITS, type SubscriptionTier, type SubscriptionStatus } from '@/types'
+import {
+  TIER_LIMITS,
+  type SubscriptionTier,
+  type SubscriptionStatus,
+} from '@/types'
+import { Loader2 } from 'lucide-react'
 
 export function SubscriptionSection({
   tier,
@@ -45,26 +50,48 @@ export function SubscriptionSection({
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-6">
-      <h2 className="text-lg font-semibold">Subscription</h2>
-      <div className="mt-4 space-y-3 text-sm">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Plan</span>
-          <span className="font-medium capitalize">{tier}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Status</span>
-          <span className="capitalize">{status}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Credits remaining</span>
-          <span>
-            {limits.generations === null ? 'Unlimited' : creditsRemaining}
-          </span>
-        </div>
+    <section className="rounded-xl border border-border bg-card">
+      <div className="border-b border-border px-6 py-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wider">
+          Subscription
+        </h2>
+      </div>
+      <div className="divide-y divide-border">
+        {[
+          { label: 'Plan', value: tier, highlight: tier !== 'free' },
+          { label: 'Status', value: status },
+          {
+            label: 'Credits remaining',
+            value:
+              limits.generations === null
+                ? 'Unlimited'
+                : String(creditsRemaining),
+          },
+          {
+            label: 'Monthly limit',
+            value:
+              limits.generations === null
+                ? 'Unlimited'
+                : String(limits.generations),
+          },
+        ].map((row) => (
+          <div
+            key={row.label}
+            className="flex items-center justify-between px-6 py-3.5 text-sm"
+          >
+            <span className="text-muted-foreground">{row.label}</span>
+            <span
+              className={`font-medium capitalize ${
+                'highlight' in row && row.highlight ? 'text-primary' : ''
+              }`}
+            >
+              {row.value}
+            </span>
+          </div>
+        ))}
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 border-t border-border px-6 py-5">
         {tier === 'free' && (
           <>
             <Button
@@ -72,7 +99,10 @@ export function SubscriptionSection({
               onClick={() => handleUpgrade('pro')}
               disabled={loading !== null}
             >
-              {loading === 'pro' ? 'Loading...' : 'Upgrade to Pro — $29/mo'}
+              {loading === 'pro' ? (
+                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+              ) : null}
+              UPGRADE TO PRO &mdash; $29/mo
             </Button>
             <Button
               size="sm"
@@ -80,7 +110,10 @@ export function SubscriptionSection({
               onClick={() => handleUpgrade('agency')}
               disabled={loading !== null}
             >
-              {loading === 'agency' ? 'Loading...' : 'Upgrade to Agency — $99/mo'}
+              {loading === 'agency' ? (
+                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+              ) : null}
+              UPGRADE TO AGENCY &mdash; $99/mo
             </Button>
           </>
         )}
@@ -92,7 +125,10 @@ export function SubscriptionSection({
             onClick={handleManage}
             disabled={loading !== null}
           >
-            {loading === 'portal' ? 'Loading...' : 'Manage subscription'}
+            {loading === 'portal' ? (
+              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+            ) : null}
+            MANAGE SUBSCRIPTION
           </Button>
         )}
       </div>
