@@ -292,6 +292,59 @@ function extractWithRegex(html: string, url: string): ExtractedProduct {
   }
 }
 
+// ─── ASIN extraction ────────────────────────────────────────────────────────
+
+function extractAsin(url: string): string | null {
+  const match =
+    url.match(/\/dp\/([A-Z0-9]{10})/) ??
+    url.match(/\/product\/([A-Z0-9]{10})/) ??
+    url.match(/[?&]asin=([A-Z0-9]{10})/)
+  return match ? match[1] : null
+}
+
+// ─── Amazon review scraping ──────────────────────────────────────────────────
+
+async function scrapeReviews(asin: string): Promise<string[]> {
+  if (!FIRECRAWL_API_KEY || !ANTHROPIC_API_KEY) return []
+
+  try {
+    const reviewUrl = `https://www.amazon.com/product-reviews/${asin}?sortBy=recent&pageNumber=1`
+    const result = await scrapeWithFirecrawl(reviewUrl)
+    if (!result?.markdown) return []
+
+    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY })
+
+    const message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [
+        {
+          role: 'user',
+          content: `Extract the 5 most useful customer review snippets from this Amazon reviews page. Focus on reviews that describe specific benefits, pain points solved, or vivid use-case details. Keep each snippet to 1-2 sentences max.
+
+Return ONLY a JSON array of strings, no other text:
+["review snippet 1", "review snippet 2", ...]
+
+REVIEWS PAGE:
+${result.markdown.substring(0, 8000)}`,
+        },
+      ],
+    })
+
+    const text =
+      message.content[0].type === 'text' ? message.content[0].text.trim() : ''
+    const jsonMatch = text.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) return []
+
+    const parsed = JSON.parse(jsonMatch[0])
+    return Array.isArray(parsed)
+      ? parsed.map(String).filter(Boolean).slice(0, 5)
+      : []
+  } catch {
+    return []
+  }
+}
+
 // ─── Main handler ───────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
@@ -338,11 +391,16 @@ export async function POST(request: Request) {
       extracted = extractWithRegex(rawHtml ?? '', url)
     }
 
+    // Step 3: scrape reviews in parallel (Amazon only, best-effort)
+    const asin = extractAsin(url)
+    const productReviews = asin ? await scrapeReviews(asin) : []
+
     return NextResponse.json({
       ...extracted,
       source_url: url,
       extraction_method: method,
       product_images: productImages,
+      product_reviews: productReviews,
     })
   } catch (err) {
     console.error('Scrape error:', err)

@@ -1,2 +1,2 @@
 export { renderTemplate } from './render'
-export type { TemplateData } from './types'
+export type { TemplateData, ImageIntent } from './types'
