@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { IMAGE_FORMATS, type ImageFormatType } from '@/types'
-import { Loader2, Sparkles, Trash2, X, AlertCircle } from 'lucide-react'
+import { Loader2, Sparkles, Trash2, X, AlertCircle, ScanLine } from 'lucide-react'
 
 export function GenerateButton({ projectId }: { projectId: string }) {
   const router = useRouter()
@@ -231,6 +231,80 @@ function GeneratingBanner({
           AI is creating your images ({elapsed}s) — you can leave this page
         </p>
       </div>
+    </div>
+  )
+}
+
+export type AnalysisResult = {
+  overall_score: number
+  current_grade: string
+  estimated_conversion_lift: string
+  image_scores: Array<{
+    image_number: number
+    type: string
+    score: number
+    what_works: string
+    gap: string
+  }>
+  missing_slots: string[]
+  top_recommendations: string[]
+  brand_voice_detected: string
+}
+
+export function AnalyzeButton({
+  projectId,
+  hasImages,
+  onResult,
+}: {
+  projectId: string
+  hasImages: boolean
+  onResult: (result: AnalysisResult) => void
+}) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleAnalyze() {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}/analyze`, { method: 'POST' })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Analysis failed')
+        return
+      }
+
+      onResult(data)
+    } catch {
+      setError('Request failed. Try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div>
+      <Button
+        variant="outline"
+        onClick={handleAnalyze}
+        disabled={loading || !hasImages}
+        title={!hasImages ? 'Scrape a product URL first to enable analysis' : undefined}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Analyzing...
+          </>
+        ) : (
+          <>
+            <ScanLine className="mr-1.5 h-4 w-4" /> Score Content
+          </>
+        )}
+      </Button>
+      {error && (
+        <p className="mt-1.5 text-xs text-destructive">{error}</p>
+      )}
     </div>
   )
 }
