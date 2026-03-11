@@ -32,18 +32,30 @@ interface FontSpec {
 }
 
 const FONT_SPECS: FontSpec[] = [
-  // Inter — all weights for body, labels, and fallback headlines
+  // ── Inter — default / professional / technical (body text + fallback) ─────
   { family: 'Inter', weight: 300, url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-300-normal.ttf' },
   { family: 'Inter', weight: 400, url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf' },
   { family: 'Inter', weight: 600, url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.ttf' },
   { family: 'Inter', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.ttf' },
   { family: 'Inter', weight: 800, url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-800-normal.ttf' },
-  // Playfair Display — luxury/premium/professional headlines (elegant serif)
+  // ── Montserrat — fitness / performance / bold / supplements ──────────────
+  { family: 'Montserrat', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/montserrat@latest/latin-700-normal.ttf' },
+  { family: 'Montserrat', weight: 800, url: 'https://cdn.jsdelivr.net/fontsource/fonts/montserrat@latest/latin-800-normal.ttf' },
+  // ── Playfair Display — luxury / beauty / skincare / elegant serif ─────────
   { family: 'Playfair Display', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/playfair-display@latest/latin-700-normal.ttf' },
   { family: 'Playfair Display', weight: 800, url: 'https://cdn.jsdelivr.net/fontsource/fonts/playfair-display@latest/latin-800-normal.ttf' },
-  // Nunito — lifestyle/playful/energetic headlines (friendly rounded sans)
+  // ── Lora — natural / organic / food / botanical / earthy ─────────────────
+  { family: 'Lora', weight: 600, url: 'https://cdn.jsdelivr.net/fontsource/fonts/lora@latest/latin-600-normal.ttf' },
+  { family: 'Lora', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/lora@latest/latin-700-normal.ttf' },
+  // ── Raleway — fashion / apparel / modern / minimal / lifestyle ────────────
+  { family: 'Raleway', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/raleway@latest/latin-700-normal.ttf' },
+  { family: 'Raleway', weight: 800, url: 'https://cdn.jsdelivr.net/fontsource/fonts/raleway@latest/latin-800-normal.ttf' },
+  // ── Nunito — playful / fun / family / kids / friendly / casual ───────────
   { family: 'Nunito', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/nunito@latest/latin-700-normal.ttf' },
   { family: 'Nunito', weight: 800, url: 'https://cdn.jsdelivr.net/fontsource/fonts/nunito@latest/latin-800-normal.ttf' },
+  // ── Oswald — industrial / rugged / outdoor / tools / durable ─────────────
+  { family: 'Oswald', weight: 600, url: 'https://cdn.jsdelivr.net/fontsource/fonts/oswald@latest/latin-600-normal.ttf' },
+  { family: 'Oswald', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/oswald@latest/latin-700-normal.ttf' },
 ]
 
 interface LoadedFont {

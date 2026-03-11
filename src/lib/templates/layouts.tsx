@@ -44,13 +44,39 @@ function truncate(text: string, max: number): string {
 }
 
 // Returns the display font family for headline elements based on brand tone.
-// Playfair Display → luxury/premium/elegant (serif, authoritative)
-// Nunito           → lifestyle/playful/energetic (rounded, friendly)
-// Inter            → professional/technical/default
+// Keyword matching (uses .includes) so descriptive tones work too.
+//
+// Montserrat      → fitness / performance / bold / supplements / health / sport
+// Playfair Display→ luxury / beauty / skincare / elegant / premium / sophisticated
+// Lora            → natural / organic / food / botanical / herbal / earthy / wholesome
+// Raleway         → fashion / apparel / minimal / modern / lifestyle / chic / style
+// Nunito          → playful / fun / family / kids / friendly / casual / cheerful
+// Oswald          → industrial / rugged / outdoor / tools / durable / tough / heavy
+// Inter           → professional / technical / clean / default
 function getDisplayFont(data: TemplateData): string {
   const tone = (data.contentTone ?? '').toLowerCase()
-  if (tone === 'luxury' || tone === 'premium' || tone === 'elegant') return 'Playfair Display'
-  if (tone === 'lifestyle' || tone === 'playful' || tone === 'fun' || tone === 'energetic') return 'Nunito'
+
+  const matches = (keywords: string[]) => keywords.some((k) => tone.includes(k))
+
+  if (matches(['bold', 'fitness', 'sport', 'athletic', 'performance', 'strong', 'power', 'supplement', 'workout', 'gym', 'muscle', 'energy drink']))
+    return 'Montserrat'
+
+  if (matches(['luxury', 'premium', 'elegant', 'sophisticated', 'beauty', 'skincare', 'prestige', 'haute', 'refined', 'couture', 'upscale']))
+    return 'Playfair Display'
+
+  if (matches(['natural', 'organic', 'food', 'botanical', 'herbal', 'earthy', 'wholesome', 'nutrition', 'ingredient', 'farm', 'harvest', 'artisan']))
+    return 'Lora'
+
+  if (matches(['fashion', 'apparel', 'clothing', 'minimal', 'minimalist', 'modern', 'trendy', 'chic', 'style', 'wear', 'wardrobe', 'outfit']))
+    return 'Raleway'
+
+  if (matches(['playful', 'fun', 'family', 'kids', 'friendly', 'casual', 'cheerful', 'bright', 'colorful', 'child', 'baby', 'pet']))
+    return 'Nunito'
+
+  if (matches(['industrial', 'rugged', 'outdoor', 'tool', 'tough', 'durable', 'heavy', 'gear', 'hardware', 'construction', 'mechanic', 'tactical']))
+    return 'Oswald'
+
+  // lifestyle / professional / technical — Inter is clean and works great here
   return 'Inter'
 }
 
