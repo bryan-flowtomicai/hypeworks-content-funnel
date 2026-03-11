@@ -111,6 +111,7 @@ export default function NewProjectPage() {
         tagline: data.tagline || '',
         brand_colors: data.brand_colors || [],
         product_images: data.product_images || [],
+        product_reviews: data.product_reviews || [],
         source_url: url.trim(),
       })
       setExtractionMethod(data.extraction_method ?? 'regex')

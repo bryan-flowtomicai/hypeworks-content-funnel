@@ -5,7 +5,49 @@ import { generateBackground } from '@/lib/fal/generate'
 import { generateOptimizedPrompt } from '@/lib/fal/prompt'
 import { renderTemplate } from '@/lib/templates'
 import type { TemplateData } from '@/lib/templates'
+import type { ImageIntent } from '@/lib/templates/types'
 import { IMAGE_FORMATS, type ImageFormatType } from '@/types'
+
+// Assign a diverse set of intents when generating multiple formats.
+// Each format gets a different creative goal so images tell varied stories.
+const FORMAT_DEFAULT_INTENTS: Record<ImageFormatType, ImageIntent> = {
+  hero: 'lifestyle',
+  standard: 'how_it_works',
+  square: 'benefit',
+  portrait: 'social_proof',
+  banner_wide: 'lifestyle',
+}
+
+// When multiple of the same format type are requested, cycle through these
+const INTENT_CYCLE: ImageIntent[] = [
+  'lifestyle',
+  'benefit',
+  'how_it_works',
+  'feature_grid',
+  'social_proof',
+  'problem_solution',
+  'comparison',
+]
+
+function assignIntents(formats: ImageFormatType[]): Map<number, ImageIntent> {
+  const map = new Map<number, ImageIntent>()
+  const usedIntents = new Set<ImageIntent>()
+
+  formats.forEach((format, i) => {
+    const defaultIntent = FORMAT_DEFAULT_INTENTS[format]
+    if (!usedIntents.has(defaultIntent)) {
+      map.set(i, defaultIntent)
+      usedIntents.add(defaultIntent)
+    } else {
+      // Pick next unused intent from cycle
+      const next = INTENT_CYCLE.find((intent) => !usedIntents.has(intent)) ?? defaultIntent
+      map.set(i, next)
+      usedIntents.add(next)
+    }
+  })
+
+  return map
+}
 
 export const maxDuration = 300
 
@@ -91,14 +133,26 @@ export async function POST(
       .eq('id', projectId)
 
     const scraped = project.scraped_data as Record<string, unknown> | null
+    const productReviews = (scraped?.product_reviews as string[]) ?? []
+
+    // Assign diverse intents upfront so each image tells a different story
+    const intentMap = assignIntents(formats)
 
     // ── Run all formats in parallel ──────────────────────────────────────
     const settled = await Promise.allSettled(
-      formats.map(async (format) => {
+      formats.map(async (format, idx) => {
         const spec = IMAGE_FORMATS[format]
         if (!spec) throw new Error(`Unknown format: ${format}`)
 
-        // Phase 1: Generate optimized prompt via Claude
+        const intent = intentMap.get(idx)
+
+        // Randomly pick a review highlight for social_proof intents
+        const reviewHighlight =
+          productReviews.length > 0
+            ? productReviews[idx % productReviews.length]
+            : undefined
+
+        // Phase 1: Generate optimized prompt via Claude (with intent + reviews)
         const prompt = await generateOptimizedPrompt({
           productName: project.product_name ?? project.name,
           brandName: project.brand_name ?? undefined,
@@ -111,6 +165,8 @@ export async function POST(
             (scraped?.description as string) ??
             project.description ??
             undefined,
+          productReviews: productReviews.length > 0 ? productReviews : undefined,
+          intent,
           format,
           width: spec.width,
           height: spec.height,
@@ -140,6 +196,7 @@ export async function POST(
         // Phase 2: Composite via Satori + resvg
         const templateData: TemplateData = {
           format,
+          intent,
           productName: project.product_name ?? project.name,
           displayTitle: (scraped?.display_title as string) || undefined,
           tagline: (scraped?.tagline as string) || undefined,
@@ -150,6 +207,7 @@ export async function POST(
           contentTone: project.content_tone,
           brandColors: project.brand_colors ?? [],
           backgroundImageUrl,
+          reviewHighlight,
         }
 
         const finalPng = await renderTemplate(templateData)

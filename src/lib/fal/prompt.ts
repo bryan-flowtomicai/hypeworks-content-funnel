@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { ImageFormatType } from '@/types'
+import type { ImageIntent } from '@/lib/templates/types'
 import { getModelForFormat } from './generate'
 
 export interface PromptContext {
@@ -11,33 +12,31 @@ export interface PromptContext {
   contentTone?: string
   brandColors?: string[]
   description?: string
+  productReviews?: string[]  // scraped customer review snippets
+  intent?: ImageIntent       // creative goal for this specific image
   format: ImageFormatType
   width: number
   height: number
 }
 
-const FORMAT_GUIDANCE: Record<ImageFormatType, string> = {
-  hero: `This is a HERO banner (970x600). Generate a prompt for a wide cinematic lifestyle/product photograph.
-The image should feel aspirational and premium — think editorial magazine spread.
-Focus on showing the product in a beautiful, contextual environment with warm, natural lighting.
-Do NOT include any text, logos, or overlays — those will be composited separately.`,
-
-  standard: `This is a STANDARD module (970x300). Generate a prompt for a clean, wide product illustration.
-The image should work as a background for an infographic-style layout where text and icons will be overlaid.
-Create a subtle, professional scene with muted tones and plenty of negative space on the left side for text.
-Do NOT include any text, logos, or overlays.`,
-
-  square: `This is a SQUARE module (600x600). Generate a prompt for a centered product-focused image.
-The product should be the hero, shown from a slightly elevated angle with soft studio lighting.
-Use a clean, gradient or lightly textured background that complements the product.
-Leave space around the edges for feature callouts. Do NOT include any text.`,
-
-  portrait: `This is a PORTRAIT module (300x400). Generate a prompt for a vertical product/lifestyle shot.
-The product should occupy the top half of the frame with a lifestyle setting.
-Keep the bottom portion relatively clean or softly blurred for text overlay.
-Do NOT include any text, logos, or overlays.`,
-
+// Per-format base guidance
+const FORMAT_BASE: Record<ImageFormatType, string> = {
+  hero: `This is a HERO banner (970x600). Wide cinematic image, premium and editorial.`,
+  standard: `This is a STANDARD module (970x300). Wide, clean, works as infographic background.`,
+  square: `This is a SQUARE module (600x600). Centered, product-focused, slight elevation angle.`,
+  portrait: `This is a PORTRAIT module (300x400). Vertical product/lifestyle shot.`,
   banner_wide: `This is a BANNER (970x130). No image generation needed — return "SKIP" only.`,
+}
+
+// Per-intent creative direction — overrides the generic format guidance
+const INTENT_GUIDANCE: Partial<Record<ImageIntent, string>> = {
+  lifestyle: `Aspirational lifestyle scene — show the product being enjoyed by its target user in a real-world environment. Focus on emotion and atmosphere. Warm, natural lighting.`,
+  benefit: `Dramatic benefit-focused image — abstract or symbolic visual that represents the core value proposition. Bold composition, strong contrast. The scene should communicate transformation or improvement.`,
+  how_it_works: `Clean, instructional background — subtle texture or workspace that suggests process and clarity. Muted tones, minimal clutter. Plenty of negative space for text overlays.`,
+  feature_grid: `Technical, precise background — clean studio or surface texture. Neutral or slightly tinted. Should feel detailed and trustworthy like a product spec sheet backdrop.`,
+  social_proof: `Warm, human background — soft natural light suggesting authenticity and happiness. Could be hands holding the product, a candid moment of use, or a warm home environment.`,
+  problem_solution: `Before/after contrast scene — one side darker and more chaotic, one side clean and bright. Or: show the problem being solved (mess cleaned, pain relieved, task simplified).`,
+  comparison: `Clean, neutral product showcase environment — white or off-white studio feel that lets the product stand out. Should feel confident and premium, like a comparison ad.`,
 }
 
 export async function generateOptimizedPrompt(
@@ -55,34 +54,45 @@ export async function generateOptimizedPrompt(
   const modelHint =
     modelConfig.model === 'fal-ai/recraft-v3'
       ? 'The target model is Recraft V3 (digital illustration style). Prompts should describe a clean, graphic illustration rather than a photograph.'
-      : 'The target model is Flux 2 (photographic). Prompts should describe a photorealistic scene with specific lighting, camera angle, and environment details.'
+      : 'The target model is Flux 2 (photorealistic). Prompts should describe a photorealistic scene with specific lighting, camera angle, and environment details.'
+
+  const intentGuidance = ctx.intent ? INTENT_GUIDANCE[ctx.intent] : undefined
+  const reviewContext =
+    ctx.productReviews?.length
+      ? `\nCUSTOMER REVIEWS (use this language to make the image context more authentic):\n${ctx.productReviews.slice(0, 3).map((r, i) => `${i + 1}. "${r}"`).join('\n')}`
+      : ''
 
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 300,
+      model: 'claude-sonnet-4-6',
+      max_tokens: 350,
       messages: [
         {
           role: 'user',
-          content: `You are an expert Amazon A+ content designer. Generate an optimized image generation prompt for an AI model.
+          content: `You are an expert Amazon A+ content visual designer. Generate a highly specific image generation prompt.
 
 PRODUCT INFO:
 - Name: ${ctx.productName}
 ${ctx.brandName ? `- Brand: ${ctx.brandName}` : ''}
 ${ctx.category ? `- Category: ${ctx.category}` : ''}
-${ctx.keyFeatures?.length ? `- Key Features: ${ctx.keyFeatures.join('; ')}` : ''}
+${ctx.keyFeatures?.length ? `- Key Features: ${ctx.keyFeatures.slice(0, 5).join('; ')}` : ''}
 ${ctx.targetAudience ? `- Target Audience: ${ctx.targetAudience}` : ''}
 ${ctx.contentTone ? `- Tone: ${ctx.contentTone}` : ''}
 ${ctx.brandColors?.length ? `- Brand Colors: ${ctx.brandColors.filter(Boolean).join(', ')}` : ''}
-${ctx.description ? `- Description: ${ctx.description.substring(0, 300)}` : ''}
+${ctx.description ? `- Description: ${ctx.description.substring(0, 250)}` : ''}
+${reviewContext}
 
-FORMAT REQUIREMENTS:
-${FORMAT_GUIDANCE[ctx.format]}
+FORMAT: ${FORMAT_BASE[ctx.format]}
+${intentGuidance ? `\nCREATIVE INTENT: ${intentGuidance}` : ''}
 
-MODEL HINT:
-${modelHint}
+MODEL HINT: ${modelHint}
 
-Return ONLY the image generation prompt — no explanation, no quotes, no prefixes. Just the prompt text.`,
+RULES:
+- Be SPECIFIC to this exact product, not generic
+- Reference the product category, use-case, or lifestyle naturally
+- No text, logos, or overlays in the image
+- Vary lighting, environment, and composition based on the intent
+- Return ONLY the prompt — no explanation, no quotes, no prefixes`,
         },
       ],
     })
@@ -106,17 +116,26 @@ function buildFallbackPrompt(ctx: PromptContext): string {
     playful: 'vibrant, energetic, fun',
   }
 
+  const intentExtra: Partial<Record<ImageIntent, string>> = {
+    lifestyle: 'aspirational in-use scene with natural lighting',
+    benefit: 'dramatic bold composition symbolizing transformation',
+    how_it_works: 'clean workspace background with soft neutral tones',
+    feature_grid: 'technical studio backdrop, precise and detailed',
+    social_proof: 'warm candid moment, hands with product, natural light',
+    problem_solution: 'before-after contrast, one side dark one bright',
+    comparison: 'clean white studio product showcase',
+  }
+
   const toneDesc = toneMap[ctx.contentTone ?? 'professional'] ?? 'professional'
+  const intentDesc = ctx.intent ? intentExtra[ctx.intent] : undefined
 
   const parts = [
     `Professional product photography of ${ctx.productName}`,
     ctx.brandName ? `by ${ctx.brandName}` : '',
-    `in a ${toneDesc} setting`,
+    intentDesc ? intentDesc : `in a ${toneDesc} setting`,
     'studio lighting, high quality, sharp focus',
-    ctx.category ? `${ctx.category} product category` : '',
-    'clean background with soft gradients',
+    ctx.category ? `${ctx.category} product` : '',
     'no text, no logos, no overlays',
-    `aspect ratio ${ctx.width}:${ctx.height}`,
   ]
 
   return parts.filter(Boolean).join(', ')
