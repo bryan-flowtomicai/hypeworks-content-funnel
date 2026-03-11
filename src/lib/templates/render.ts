@@ -2,6 +2,7 @@ import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
 import type { ImageFormatType } from '@/types'
 import { IMAGE_FORMATS } from '@/types'
+import type { SlotId } from './types'
 import type { TemplateData } from './types'
 import {
   HeroTemplate,
@@ -9,13 +10,30 @@ import {
   SquareTemplate,
   PortraitTemplate,
   BannerWideTemplate,
+  PT01BenefitTemplate,
+  PT02ProblemSolutionTemplate,
+  PT03HowItWorksTemplate,
+  PT04FeatureGridTemplate,
+  PT05DetailTemplate,
+  PT06CompatibilityTemplate,
+  PT07SocialProofTemplate,
 } from './layouts'
 
-// Direct CDN URLs for Inter TTF files (resvg requires TTF, not woff2)
+// ─── Fonts ───────────────────────────────────────────────────────────────────
+// Extended Inter weights for richer typographic range (300=Light, 600=SemiBold, 800=Black)
+
 const FONT_URLS: { weight: number; url: string }[] = [
+  {
+    weight: 300,
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-300-normal.ttf',
+  },
   {
     weight: 400,
     url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf',
+  },
+  {
+    weight: 600,
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.ttf',
   },
   {
     weight: 700,
@@ -58,10 +76,21 @@ async function loadFonts(): Promise<FontWeight[]> {
   return fonts
 }
 
-const TEMPLATE_MAP: Record<
-  ImageFormatType,
-  (data: TemplateData) => React.ReactElement
-> = {
+// ─── Slot-based routing (takes priority over format) ─────────────────────────
+
+const SLOT_TEMPLATE_MAP: Partial<Record<SlotId, (data: TemplateData) => React.ReactElement>> = {
+  HERO: HeroTemplate,
+  PT01: PT01BenefitTemplate,
+  PT02: PT02ProblemSolutionTemplate,
+  PT03: PT03HowItWorksTemplate,
+  PT04: PT04FeatureGridTemplate,
+  PT05: PT05DetailTemplate,
+  PT06: PT06CompatibilityTemplate,
+  PT07: PT07SocialProofTemplate,
+}
+
+// Format-based fallback for backward compatibility (when slotId is not set)
+const FORMAT_TEMPLATE_MAP: Record<ImageFormatType, (data: TemplateData) => React.ReactElement> = {
   hero: HeroTemplate,
   standard: StandardTemplate,
   square: SquareTemplate,
@@ -69,9 +98,15 @@ const TEMPLATE_MAP: Record<
   banner_wide: BannerWideTemplate,
 }
 
+// ─── Main render function ─────────────────────────────────────────────────────
+
 export async function renderTemplate(data: TemplateData): Promise<Buffer> {
   const spec = IMAGE_FORMATS[data.format]
-  const templateFn = TEMPLATE_MAP[data.format]
+
+  // Prefer slot-specific template; fall back to format-based
+  const templateFn =
+    (data.slotId ? SLOT_TEMPLATE_MAP[data.slotId] : undefined) ??
+    FORMAT_TEMPLATE_MAP[data.format]
 
   if (!templateFn) {
     throw new Error(`Unknown template format: ${data.format}`)

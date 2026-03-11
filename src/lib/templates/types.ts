@@ -106,5 +106,6 @@ export interface TemplateData {
   contentTone?: string
   brandColors: string[]
   backgroundImageUrl?: string | null
-  reviewHighlight?: string // real customer review snippet for social_proof layouts
+  productImageUrl?: string      // proxied product photo for compositing directly in Satori layouts
+  reviewHighlight?: string      // real customer review snippet for social_proof layouts
 }
