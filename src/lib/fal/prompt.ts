@@ -14,6 +14,8 @@ export interface PromptContext {
   description?: string
   productReviews?: string[]  // scraped customer review snippets
   intent?: ImageIntent       // creative goal for this specific image
+  copyBrief?: string         // strategy-generated creative brief for this slot
+  headline?: string          // the headline appearing on this image — scene should support it
   format: ImageFormatType
   width: number
   height: number
@@ -62,10 +64,18 @@ export async function generateOptimizedPrompt(
       ? `\nCUSTOMER REVIEWS (use this language to make the image context more authentic):\n${ctx.productReviews.slice(0, 3).map((r, i) => `${i + 1}. "${r}"`).join('\n')}`
       : ''
 
+  // Strategy context — highest priority creative guidance
+  const strategyContext = ctx.copyBrief
+    ? `\nSLOT BRIEF (follow this precisely): ${ctx.copyBrief}`
+    : ''
+  const headlineContext = ctx.headline
+    ? `\nIMAGE HEADLINE (the background must visually support this message): "${ctx.headline}"`
+    : ''
+
   try {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 350,
+      max_tokens: 400,
       messages: [
         {
           role: 'user',
@@ -83,14 +93,14 @@ ${ctx.description ? `- Description: ${ctx.description.substring(0, 250)}` : ''}
 ${reviewContext}
 
 FORMAT: ${FORMAT_BASE[ctx.format]}
-${intentGuidance ? `\nCREATIVE INTENT: ${intentGuidance}` : ''}
+${intentGuidance ? `\nCREATIVE INTENT: ${intentGuidance}` : ''}${strategyContext}${headlineContext}
 
 MODEL HINT: ${modelHint}
 
 RULES:
 - Be SPECIFIC to this exact product, not generic
-- Reference the product category, use-case, or lifestyle naturally
-- No text, logos, or overlays in the image
+- The background scene must emotionally reinforce the headline/brief
+- No text, logos, or overlays in the image (text is overlaid separately)
 - Vary lighting, environment, and composition based on the intent
 - Return ONLY the prompt — no explanation, no quotes, no prefixes`,
         },

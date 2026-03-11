@@ -42,6 +42,7 @@ export interface GenerateBackgroundInput {
   height: number
   format: ImageFormatType
   brandColors?: string[]
+  referenceImageUrl?: string  // product photo — enables image-to-image
 }
 
 export interface GenerateBackgroundResult {
@@ -58,6 +59,11 @@ export async function generateBackground(
   if (config.model === 'none') return null
 
   ensureConfig()
+
+  // Use image-to-image when a product reference is available (Flux formats only)
+  if (input.referenceImageUrl && config.model === 'fal-ai/flux-2-flex') {
+    return generateWithFluxImageToImage(input)
+  }
 
   if (config.model === 'fal-ai/recraft-v3') {
     return generateWithRecraft(input, config)
@@ -115,6 +121,31 @@ async function generateWithFlux2(
     imageUrl: data.images[0].url,
     requestId: result.requestId ?? '',
     model: 'flux-2-flex',
+  }
+}
+
+// Image-to-image: product reference photo guides the generated scene
+// strength 0.75 = 75% generated scene, 25% reference structure preserved
+async function generateWithFluxImageToImage(
+  input: GenerateBackgroundInput
+): Promise<GenerateBackgroundResult> {
+  const result = await fal.subscribe('fal-ai/flux/dev/image-to-image', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    input: {
+      prompt: input.prompt,
+      image_url: input.referenceImageUrl,
+      strength: 0.78,
+      num_inference_steps: 28,
+    } as any,
+    pollInterval: 3000,
+  })
+
+  const data = result.data as { images: Array<{ url: string }> }
+
+  return {
+    imageUrl: data.images[0].url,
+    requestId: result.requestId ?? '',
+    model: 'flux-dev-i2i',
   }
 }
 
