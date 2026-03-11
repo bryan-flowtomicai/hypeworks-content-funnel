@@ -922,7 +922,7 @@ export function PT04FeatureGridTemplate(data: TemplateData) {
             style={{
               width: 120, height: 120, borderRadius: 60,
               background: `linear-gradient(135deg, ${accent}33, ${secondary}33)`,
-              border: `2px solid ${accent}44`,
+              borderWidth: 2, borderStyle: 'solid', borderColor: `${accent}44`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
@@ -1196,7 +1196,7 @@ export function PT06CompatibilityTemplate(data: TemplateData) {
                 alignItems: 'center',
                 gap: 8,
                 backgroundColor: WHITE,
-                border: `1.5px solid ${badgeColors[i % badgeColors.length]}44`,
+                borderWidth: 1.5, borderStyle: 'solid', borderColor: `${badgeColors[i % badgeColors.length]}44`,
                 borderRadius: 8,
                 padding: '7px 12px',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.06)',

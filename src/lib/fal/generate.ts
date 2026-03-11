@@ -56,6 +56,7 @@ export interface GenerateBackgroundInput {
   intent?: ImageIntent
   brandColors?: string[]
   referenceImageUrl?: string  // product photo — triggers Kontext when usable
+  seed?: number               // optional fixed seed; omit for random variation
 }
 
 export interface GenerateBackgroundResult {
@@ -117,6 +118,8 @@ async function generateWithKontext(
   input: GenerateBackgroundInput,
   imageUrl: string
 ): Promise<GenerateBackgroundResult> {
+  const seed = input.seed ?? Math.floor(Math.random() * 2_147_483_647)
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = await fal.subscribe('fal-ai/flux-pro/kontext' as any, {
     input: {
@@ -126,6 +129,7 @@ async function generateWithKontext(
       guidance_scale: 3.5,
       output_format: 'png',
       safety_tolerance: '5',
+      seed,
     },
     pollInterval: 3000,
   })
@@ -144,6 +148,7 @@ async function generateWithUltra(
   input: GenerateBackgroundInput
 ): Promise<GenerateBackgroundResult> {
   const aspectRatio = ULTRA_ASPECT_RATIO[input.format] ?? '16:9'
+  const seed = input.seed ?? Math.floor(Math.random() * 2_147_483_647)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = await fal.subscribe('fal-ai/flux-pro/v1.1-ultra' as any, {
@@ -153,6 +158,7 @@ async function generateWithUltra(
       output_format: 'png',
       safety_tolerance: '5',
       raw: false,
+      seed,
     },
     pollInterval: 3000,
   })
@@ -173,11 +179,14 @@ async function generateWithIdeogram(
   const isDesignIntent =
     input.intent === 'social_proof' || input.intent === 'feature_grid'
 
+  const seed = input.seed ?? Math.floor(Math.random() * 2_147_483_647)
+
   const falInput: Record<string, unknown> = {
     prompt: input.prompt,
     image_size: { width: input.width, height: input.height },
     style: isDesignIntent ? 'DESIGN' : 'REALISTIC',
     expand_prompt: false,
+    seed,
   }
 
   // Wire brand colors into Ideogram's color palette for branded results
