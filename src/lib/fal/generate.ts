@@ -30,16 +30,16 @@ export interface ModelConfig {
 // Returns a model hint for prompt generation — not the final routing decision
 export function getModelForFormat(format: ImageFormatType): ModelConfig {
   if (format === 'banner_wide') return { model: 'none' }
-  if (format === 'standard') return { model: 'fal-ai/ideogram/v3' }
   return { model: 'fal-ai/flux-pro/kontext' }
 }
 
 // ─── Aspect ratios for flux-pro/v1.1-ultra (no custom dimensions supported) ──
 
 const ULTRA_ASPECT_RATIO: Partial<Record<ImageFormatType, string>> = {
-  hero: '16:9',    // 970×600 ≈ 16:9
-  portrait: '3:4', // 300×400 = 3:4
-  square: '1:1',   // 600×600
+  hero: '16:9',     // 970×600 ≈ 16:9
+  standard: '21:9', // 970×300 — closest Ultra preset (3.23:1); background crops to fill
+  portrait: '3:4',  // 300×400 = 3:4
+  square: '1:1',    // 600×600
 }
 
 // ─── Intents that benefit from Kontext (product-in-scene placement) ──────────
@@ -87,11 +87,11 @@ export async function generateBackground(
   // Kontext  — product reference available + visual format + lifestyle/benefit/feature intent
   //            → places the actual product into a freshly generated scene
   //
-  // Ideogram — standard format (970×300 has no clean aspect-ratio preset in Ultra)
-  //            OR design/text-heavy intents (social proof quote, feature grid)
+  // Ideogram — SQUARE design/text-heavy intents ONLY (social_proof 600×600, feature_grid 600×600)
+  //            NOT standard format — 970×300 (3.23:1) causes Ideogram 422 errors
   //
-  // Ultra    — pure photorealistic scene generation, no product reference needed
-  //            → hero/portrait/square lifestyle scenes, how-it-works, problem/solution
+  // Ultra    — everything else: pure photorealistic scene generation
+  //            → hero/standard/portrait/square lifestyle, how-it-works, problem/solution
 
   if (
     proxiedImageUrl &&
@@ -102,7 +102,6 @@ export async function generateBackground(
   }
 
   if (
-    input.format === 'standard' ||
     input.intent === 'social_proof' ||
     input.intent === 'feature_grid'
   ) {
@@ -177,7 +176,7 @@ async function generateWithIdeogram(
   const falInput: Record<string, unknown> = {
     prompt: input.prompt,
     image_size: { width: input.width, height: input.height },
-    style: isDesignIntent ? 'design' : 'realistic',
+    style: isDesignIntent ? 'DESIGN' : 'REALISTIC',
     expand_prompt: false,
   }
 

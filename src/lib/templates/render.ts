@@ -20,56 +20,70 @@ import {
 } from './layouts'
 
 // ─── Fonts ───────────────────────────────────────────────────────────────────
-// Extended Inter weights for richer typographic range (300=Light, 600=SemiBold, 800=Black)
+// Three families loaded:
+//   Inter          — body text + fallback for all tones
+//   Playfair Display — luxury/professional display headlines (serif)
+//   Nunito         — lifestyle/playful/energetic display headlines (rounded sans)
 
-const FONT_URLS: { weight: number; url: string }[] = [
-  {
-    weight: 300,
-    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-300-normal.ttf',
-  },
-  {
-    weight: 400,
-    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf',
-  },
-  {
-    weight: 600,
-    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.ttf',
-  },
-  {
-    weight: 700,
-    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.ttf',
-  },
-  {
-    weight: 800,
-    url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-800-normal.ttf',
-  },
+interface FontSpec {
+  family: string
+  weight: number
+  url: string
+}
+
+const FONT_SPECS: FontSpec[] = [
+  // ── Inter — default / professional / technical (body text + fallback) ─────
+  { family: 'Inter', weight: 300, url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-300-normal.ttf' },
+  { family: 'Inter', weight: 400, url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.ttf' },
+  { family: 'Inter', weight: 600, url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.ttf' },
+  { family: 'Inter', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.ttf' },
+  { family: 'Inter', weight: 800, url: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-800-normal.ttf' },
+  // ── Montserrat — fitness / performance / bold / supplements ──────────────
+  { family: 'Montserrat', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/montserrat@latest/latin-700-normal.ttf' },
+  { family: 'Montserrat', weight: 800, url: 'https://cdn.jsdelivr.net/fontsource/fonts/montserrat@latest/latin-800-normal.ttf' },
+  // ── Playfair Display — luxury / beauty / skincare / elegant serif ─────────
+  { family: 'Playfair Display', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/playfair-display@latest/latin-700-normal.ttf' },
+  { family: 'Playfair Display', weight: 800, url: 'https://cdn.jsdelivr.net/fontsource/fonts/playfair-display@latest/latin-800-normal.ttf' },
+  // ── Lora — natural / organic / food / botanical / earthy ─────────────────
+  { family: 'Lora', weight: 600, url: 'https://cdn.jsdelivr.net/fontsource/fonts/lora@latest/latin-600-normal.ttf' },
+  { family: 'Lora', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/lora@latest/latin-700-normal.ttf' },
+  // ── Raleway — fashion / apparel / modern / minimal / lifestyle ────────────
+  { family: 'Raleway', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/raleway@latest/latin-700-normal.ttf' },
+  { family: 'Raleway', weight: 800, url: 'https://cdn.jsdelivr.net/fontsource/fonts/raleway@latest/latin-800-normal.ttf' },
+  // ── Nunito — playful / fun / family / kids / friendly / casual ───────────
+  { family: 'Nunito', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/nunito@latest/latin-700-normal.ttf' },
+  { family: 'Nunito', weight: 800, url: 'https://cdn.jsdelivr.net/fontsource/fonts/nunito@latest/latin-800-normal.ttf' },
+  // ── Oswald — industrial / rugged / outdoor / tools / durable ─────────────
+  { family: 'Oswald', weight: 600, url: 'https://cdn.jsdelivr.net/fontsource/fonts/oswald@latest/latin-600-normal.ttf' },
+  { family: 'Oswald', weight: 700, url: 'https://cdn.jsdelivr.net/fontsource/fonts/oswald@latest/latin-700-normal.ttf' },
 ]
 
-interface FontWeight {
+interface LoadedFont {
+  family: string
   weight: number
   data: ArrayBuffer
 }
 
-let cachedFonts: FontWeight[] | null = null
+let cachedFonts: LoadedFont[] | null = null
 
-async function loadFonts(): Promise<FontWeight[]> {
+async function loadFonts(): Promise<LoadedFont[]> {
   if (cachedFonts) return cachedFonts
 
-  const fonts: FontWeight[] = []
+  const fonts: LoadedFont[] = []
 
-  for (const { weight, url } of FONT_URLS) {
+  for (const { family, weight, url } of FONT_SPECS) {
     try {
       const res = await fetch(url)
       if (res.ok) {
-        fonts.push({ weight, data: await res.arrayBuffer() })
+        fonts.push({ family, weight, data: await res.arrayBuffer() })
       }
     } catch {
-      // Skip failed font weight
+      // Non-fatal: skip this weight/family
     }
   }
 
-  if (fonts.length === 0) {
-    throw new Error('Failed to load any Inter font weights')
+  if (!fonts.some((f) => f.family === 'Inter')) {
+    throw new Error('Failed to load Inter font — required for all layouts')
   }
 
   cachedFonts = fonts
@@ -120,7 +134,7 @@ export async function renderTemplate(data: TemplateData): Promise<Buffer> {
     width: spec.width,
     height: spec.height,
     fonts: fonts.map((f) => ({
-      name: 'Inter',
+      name: f.family,
       data: f.data,
       weight: f.weight as 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900,
       style: 'normal' as const,

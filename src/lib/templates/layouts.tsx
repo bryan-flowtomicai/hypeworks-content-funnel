@@ -43,6 +43,43 @@ function truncate(text: string, max: number): string {
   return text.length > max ? text.substring(0, max - 1) + '…' : text
 }
 
+// Returns the display font family for headline elements based on brand tone.
+// Keyword matching (uses .includes) so descriptive tones work too.
+//
+// Montserrat      → fitness / performance / bold / supplements / health / sport
+// Playfair Display→ luxury / beauty / skincare / elegant / premium / sophisticated
+// Lora            → natural / organic / food / botanical / herbal / earthy / wholesome
+// Raleway         → fashion / apparel / minimal / modern / lifestyle / chic / style
+// Nunito          → playful / fun / family / kids / friendly / casual / cheerful
+// Oswald          → industrial / rugged / outdoor / tools / durable / tough / heavy
+// Inter           → professional / technical / clean / default
+function getDisplayFont(data: TemplateData): string {
+  const tone = (data.contentTone ?? '').toLowerCase()
+
+  const matches = (keywords: string[]) => keywords.some((k) => tone.includes(k))
+
+  if (matches(['bold', 'fitness', 'sport', 'athletic', 'performance', 'strong', 'power', 'supplement', 'workout', 'gym', 'muscle', 'energy drink']))
+    return 'Montserrat'
+
+  if (matches(['luxury', 'premium', 'elegant', 'sophisticated', 'beauty', 'skincare', 'prestige', 'haute', 'refined', 'couture', 'upscale']))
+    return 'Playfair Display'
+
+  if (matches(['natural', 'organic', 'food', 'botanical', 'herbal', 'earthy', 'wholesome', 'nutrition', 'ingredient', 'farm', 'harvest', 'artisan']))
+    return 'Lora'
+
+  if (matches(['fashion', 'apparel', 'clothing', 'minimal', 'minimalist', 'modern', 'trendy', 'chic', 'style', 'wear', 'wardrobe', 'outfit']))
+    return 'Raleway'
+
+  if (matches(['playful', 'fun', 'family', 'kids', 'friendly', 'casual', 'cheerful', 'bright', 'colorful', 'child', 'baby', 'pet']))
+    return 'Nunito'
+
+  if (matches(['industrial', 'rugged', 'outdoor', 'tool', 'tough', 'durable', 'heavy', 'gear', 'hardware', 'construction', 'mechanic', 'tactical']))
+    return 'Oswald'
+
+  // lifestyle / professional / technical — Inter is clean and works great here
+  return 'Inter'
+}
+
 // ─── HERO slot (970×600) ─────────────────────────────────────────────────────
 // Cinematic full-bleed lifestyle scene.
 // If product image available: headline+benefits LEFT, product image RIGHT.
@@ -150,6 +187,7 @@ export function HeroTemplate(data: TemplateData) {
             style={{
               fontSize: title.length > 35 ? 38 : 48,
               fontWeight: 800,
+              fontFamily: getDisplayFont(data),
               color: WHITE,
               lineHeight: 1.1,
               marginBottom: 16,
@@ -301,6 +339,7 @@ export function PT01BenefitTemplate(data: TemplateData) {
           style={{
             fontSize: title.length > 30 ? 26 : 32,
             fontWeight: 800,
+            fontFamily: getDisplayFont(data),
             color: WHITE,
             lineHeight: 1.15,
             marginBottom: 14,
@@ -347,13 +386,15 @@ export function PT01BenefitTemplate(data: TemplateData) {
         )}
       </div>
 
-      {/* Right panel — clean white with product image */}
+      {/* Right panel — brand-tinted background so white-bg product photos stand out */}
       <div
         style={{
           display: 'flex',
           flex: 1,
           height: 600,
-          backgroundColor: hasProd ? OFF_WHITE : WARM_WHITE,
+          background: hasProd
+            ? `linear-gradient(160deg, ${accent}14 0%, ${accent}08 60%, ${WARM_WHITE} 100%)`
+            : WARM_WHITE,
           alignItems: 'center',
           justifyContent: 'center',
           position: 'relative',
@@ -566,6 +607,7 @@ export function PT02ProblemSolutionTemplate(data: TemplateData) {
           style={{
             fontSize: title.length > 40 ? 20 : 24,
             fontWeight: 800,
+            fontFamily: getDisplayFont(data),
             color: TEXT_DARK,
             lineHeight: 1.2,
             marginBottom: 6,
@@ -700,7 +742,7 @@ export function PT03HowItWorksTemplate(data: TemplateData) {
           >
             How It Works
           </span>
-          <span style={{ fontSize: 36, fontWeight: 800, color: WHITE, lineHeight: 1.15 }}>
+          <span style={{ fontSize: 36, fontWeight: 800, fontFamily: getDisplayFont(data), color: WHITE, lineHeight: 1.15 }}>
             {title}
           </span>
         </div>
@@ -817,18 +859,19 @@ export function PT04FeatureGridTemplate(data: TemplateData) {
         width: 600,
         height: 600,
         fontFamily: 'Inter',
-        backgroundColor: WARM_WHITE,
+        // Brand-tinted background so white-background product photos visually lift off the surface
+        background: `linear-gradient(145deg, ${accent}14 0%, ${WARM_WHITE} 55%, ${secondary}0E 100%)`,
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* Subtle radial gradient for depth */}
+      {/* Stronger radial glow for product depth */}
       <div
         style={{
           position: 'absolute', top: '50%', left: '50%',
-          width: 400, height: 400,
-          borderRadius: 200,
-          background: `radial-gradient(circle, ${accent}12 0%, transparent 65%)`,
+          width: 320, height: 320,
+          borderRadius: 160,
+          background: `radial-gradient(circle, ${accent}20 0%, transparent 65%)`,
           transform: 'translate(-50%, -50%)',
           display: 'flex',
         }}
@@ -847,7 +890,7 @@ export function PT04FeatureGridTemplate(data: TemplateData) {
           <span style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.18em' }}>
             {data.brandName || 'Key Ingredients'}
           </span>
-          <span style={{ fontSize: 18, fontWeight: 800, color: TEXT_DARK }}>
+          <span style={{ fontSize: 18, fontWeight: 800, fontFamily: getDisplayFont(data), color: TEXT_DARK }}>
             {truncate(data.headline || "What's Inside", 36)}
           </span>
         </div>
@@ -1018,7 +1061,7 @@ export function PT05DetailTemplate(data: TemplateData) {
             {data.brandName}
           </span>
         )}
-        <span style={{ fontSize: 18, fontWeight: 800, color: WHITE, lineHeight: 1.2 }}>
+        <span style={{ fontSize: 18, fontWeight: 800, fontFamily: getDisplayFont(data), color: WHITE, lineHeight: 1.2 }}>
           {title}
         </span>
         {subtitle && (
@@ -1073,13 +1116,15 @@ export function PT06CompatibilityTemplate(data: TemplateData) {
         </>
       )}
 
-      {/* LEFT — product image panel */}
+      {/* LEFT — product image panel (brand-tinted so white-bg products float off the surface) */}
       <div
         style={{
           display: 'flex',
           width: 260,
           height: 300,
-          backgroundColor: WHITE,
+          background: hasProd
+            ? `linear-gradient(160deg, ${accent}12 0%, ${accent}06 100%)`
+            : `linear-gradient(160deg, ${accent}18 0%, ${WARM_WHITE} 100%)`,
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
@@ -1129,7 +1174,7 @@ export function PT06CompatibilityTemplate(data: TemplateData) {
               {data.brandName}
             </span>
           )}
-          <span style={{ fontSize: 22, fontWeight: 800, color: TEXT_DARK, lineHeight: 1.2 }}>
+          <span style={{ fontSize: 22, fontWeight: 800, fontFamily: getDisplayFont(data), color: TEXT_DARK, lineHeight: 1.2 }}>
             {title}
           </span>
           {subtitle && (
@@ -1248,7 +1293,7 @@ export function PT07SocialProofTemplate(data: TemplateData) {
 
         {/* Headline */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <span style={{ fontSize: 22, fontWeight: 800, color: TEXT_DARK, lineHeight: 1.2, marginBottom: 8 }}>
+          <span style={{ fontSize: 22, fontWeight: 800, fontFamily: getDisplayFont(data), color: TEXT_DARK, lineHeight: 1.2, marginBottom: 8 }}>
             {title}
           </span>
           <div style={{ width: 40, height: 3, borderRadius: 2, background: `linear-gradient(90deg, ${accent}, ${secondary})`, display: 'flex' }} />
