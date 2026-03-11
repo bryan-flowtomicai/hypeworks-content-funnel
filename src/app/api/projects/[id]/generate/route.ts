@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/admin'
 import { generateBackground } from '@/lib/fal/generate'
 import { generateOptimizedPrompt } from '@/lib/fal/prompt'
+import { proxyImageToFalStorage } from '@/lib/fal/imageProxy'
 import { renderTemplate } from '@/lib/templates'
 import type { TemplateData } from '@/lib/templates'
 import { SLOT_DEFINITIONS, type SlotId } from '@/lib/templates/types'
@@ -149,6 +150,18 @@ export async function POST(
     const productImages = (scraped?.product_images as string[]) ?? []
     const primaryProductImage = productImages[0] ?? undefined
 
+    // Proxy the product image to fal.ai storage once upfront.
+    // This fixes Amazon CDN 422 errors AND gives Satori a stable URL to embed.
+    // The in-process cache means repeated calls within the batch are instant.
+    let proxiedProductImageUrl: string | undefined
+    if (primaryProductImage) {
+      try {
+        proxiedProductImageUrl = await proxyImageToFalStorage(primaryProductImage)
+      } catch (err) {
+        console.warn('[generate] Product image proxy failed, continuing without it:', err)
+      }
+    }
+
     const slots = buildSlotRequests(body, analysis)
     const slotCount = slots.length
 
@@ -202,24 +215,23 @@ export async function POST(
           height: spec.height,
         })
 
-        // Phase 2: Generate background — use image-to-image for hero/portrait slots
+        // Phase 2: Generate background
+        // generate.ts handles model routing: Kontext (product in scene), Ideogram (design),
+        // or Ultra (cinematic text-to-image). The proxy fixes Amazon CDN 422 errors.
         let backgroundImageUrl: string | null = null
         let requestId = ''
         let modelUsed = 'none'
 
         if (prompt !== 'SKIP') {
-          // Use product reference image for visual formats (lifestyle/benefit/how-it-works)
-          const useReference =
-            primaryProductImage &&
-            ['lifestyle', 'benefit', 'how_it_works', 'social_proof'].includes(slot.intent)
-
           const bgResult = await generateBackground({
             prompt,
             width: spec.width,
             height: spec.height,
             format: slot.format,
+            intent: slot.intent,
             brandColors: project.brand_colors,
-            referenceImageUrl: useReference ? primaryProductImage : undefined,
+            // Use already-proxied URL (no Amazon CDN 422 risk; in-process cache means free)
+            referenceImageUrl: proxiedProductImageUrl ?? undefined,
           })
 
           if (bgResult) {
@@ -246,6 +258,7 @@ export async function POST(
           contentTone: project.content_tone,
           brandColors: project.brand_colors ?? [],
           backgroundImageUrl,
+          productImageUrl: proxiedProductImageUrl,  // product photo composited directly into layout
           reviewHighlight,
         }
 
