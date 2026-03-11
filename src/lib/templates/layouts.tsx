@@ -93,6 +93,9 @@ export function HeroTemplate(data: TemplateData) {
   const features = getFeatures(data, 2)
   const hasBg = Boolean(data.backgroundImageUrl)
   const hasProd = Boolean(data.productImageUrl)
+  // When the AI background already has the product composited in-scene (Kontext),
+  // don't render the product image again as a Satori overlay — it looks doubled.
+  const showProdOverlay = hasProd && !hasBg
 
   // Dynamic font sizing: very short headlines punch big
   const headlineFontSize = title.length <= 20 ? 64 : title.length <= 30 ? 52 : title.length <= 40 ? 44 : 36
@@ -132,7 +135,7 @@ export function HeroTemplate(data: TemplateData) {
       <div
         style={{
           position: 'absolute', top: 0, left: 0, width: 970, height: 600, display: 'flex',
-          background: hasProd
+          background: showProdOverlay
             ? `linear-gradient(90deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.62) 40%, rgba(0,0,0,0.08) 65%, rgba(0,0,0,0.0) 100%)`
             : `linear-gradient(90deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.50) 55%, rgba(0,0,0,0.10) 100%)`,
         }}
@@ -149,12 +152,12 @@ export function HeroTemplate(data: TemplateData) {
           alignItems: 'center',
         }}
       >
-        {/* Left: copy — max 500px to keep text on the dark zone */}
+        {/* Left: copy — narrower when product overlay is shown, wider when AI bg fills the scene */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
-            maxWidth: hasProd ? 480 : 620,
+            maxWidth: showProdOverlay ? 480 : 620,
             flex: 1,
           }}
         >
@@ -248,8 +251,8 @@ export function HeroTemplate(data: TemplateData) {
           />
         </div>
 
-        {/* Right: product image — floats on the right with drop shadow */}
-        {hasProd && (
+        {/* Right: product image — only when no AI background (AI already composed product in-scene) */}
+        {showProdOverlay && (
           <div
             style={{
               display: 'flex',
