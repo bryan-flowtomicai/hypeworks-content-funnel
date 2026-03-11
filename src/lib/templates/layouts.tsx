@@ -88,11 +88,14 @@ function getDisplayFont(data: TemplateData): string {
 export function HeroTemplate(data: TemplateData) {
   const accent = getAccent(data)
   const secondary = getSecondary(data)
-  const title = truncate(getTitle(data), 60)
-  const subtitle = truncate(getSubtitle(data), 90)
-  const features = getFeatures(data, 3)
+  const title = truncate(getTitle(data), 45)
+  const subtitle = truncate(getSubtitle(data), 80)
+  const features = getFeatures(data, 2)
   const hasBg = Boolean(data.backgroundImageUrl)
   const hasProd = Boolean(data.productImageUrl)
+
+  // Dynamic font sizing: very short headlines punch big
+  const headlineFontSize = title.length <= 20 ? 64 : title.length <= 30 ? 52 : title.length <= 40 ? 44 : 36
 
   return (
     <div
@@ -119,19 +122,19 @@ export function HeroTemplate(data: TemplateData) {
         <div
           style={{
             position: 'absolute', top: 0, left: 0, width: 970, height: 600,
-            background: `linear-gradient(135deg, ${NEAR_DARK} 0%, ${SLATE} 50%, ${accent}44 100%)`,
+            background: `linear-gradient(135deg, ${NEAR_DARK} 0%, ${SLATE} 55%, ${accent}33 100%)`,
             display: 'flex',
           }}
         />
       )}
 
-      {/* Shallow gradient overlay — only bottom 40%, leaving top breathable */}
+      {/* Gradient overlay — strong left vignette for text legibility */}
       <div
         style={{
           position: 'absolute', top: 0, left: 0, width: 970, height: 600, display: 'flex',
           background: hasProd
-            ? `linear-gradient(90deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.0) 70%)`
-            : `linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.0) 35%, rgba(0,0,0,0.70) 100%)`,
+            ? `linear-gradient(90deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.62) 40%, rgba(0,0,0,0.08) 65%, rgba(0,0,0,0.0) 100%)`
+            : `linear-gradient(90deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.50) 55%, rgba(0,0,0,0.10) 100%)`,
         }}
       />
 
@@ -141,40 +144,38 @@ export function HeroTemplate(data: TemplateData) {
           display: 'flex',
           width: '100%',
           height: '100%',
-          padding: '40px 48px',
+          padding: '48px 56px',
           position: 'relative',
           alignItems: 'center',
         }}
       >
-        {/* Left: copy */}
+        {/* Left: copy — max 500px to keep text on the dark zone */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
+            maxWidth: hasProd ? 480 : 620,
             flex: 1,
-            gap: 0,
-            maxWidth: hasProd ? 540 : 680,
           }}
         >
-          {/* Brand badge */}
+          {/* Brand pill */}
           {data.brandName && (
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                marginBottom: 20,
+                marginBottom: 24,
               }}
             >
-              <div style={{ width: 4, height: 20, backgroundColor: accent, borderRadius: 2, display: 'flex' }} />
+              <div style={{ width: 32, height: 3, backgroundColor: accent, borderRadius: 2, display: 'flex' }} />
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 700,
-                  color: WHITE,
+                  color: accent,
                   textTransform: 'uppercase',
-                  letterSpacing: '0.18em',
-                  opacity: 0.9,
+                  letterSpacing: '0.22em',
                 }}
               >
                 {data.brandName}
@@ -182,15 +183,16 @@ export function HeroTemplate(data: TemplateData) {
             </div>
           )}
 
-          {/* Headline */}
+          {/* Headline — large, confident */}
           <span
             style={{
-              fontSize: title.length > 35 ? 38 : 48,
+              fontSize: headlineFontSize,
               fontWeight: 800,
               fontFamily: getDisplayFont(data),
               color: WHITE,
-              lineHeight: 1.1,
-              marginBottom: 16,
+              lineHeight: 1.05,
+              marginBottom: 18,
+              wordBreak: 'break-word',
             }}
           >
             {title}
@@ -200,46 +202,45 @@ export function HeroTemplate(data: TemplateData) {
           {subtitle && (
             <span
               style={{
-                fontSize: 17,
+                fontSize: 16,
                 fontWeight: 400,
-                color: 'rgba(255,255,255,0.82)',
-                lineHeight: 1.5,
-                marginBottom: 28,
-                maxWidth: 460,
+                color: 'rgba(255,255,255,0.78)',
+                lineHeight: 1.55,
+                marginBottom: 30,
+                maxWidth: 420,
               }}
             >
               {subtitle}
             </span>
           )}
 
-          {/* Feature pills */}
+          {/* Feature rows — max 2, clean and spaced */}
           {features.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {features.map((f, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div
                     style={{
-                      width: 20, height: 20, borderRadius: 10,
+                      width: 6, height: 6, borderRadius: 3,
                       backgroundColor: accent,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                      display: 'flex',
                     }}
-                  >
-                    <span style={{ fontSize: 12, fontWeight: 700, color: WHITE }}>✓</span>
-                  </div>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.88)' }}>
-                    {truncate(f, 55)}
+                  />
+                  <span style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.86)' }}>
+                    {truncate(f, 50)}
                   </span>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Accent bar at bottom */}
+          {/* Bottom accent line */}
           <div
             style={{
               display: 'flex',
-              marginTop: 32,
-              width: 48,
+              marginTop: 36,
+              width: 56,
               height: 3,
               borderRadius: 2,
               background: `linear-gradient(90deg, ${accent}, ${secondary})`,
@@ -247,26 +248,26 @@ export function HeroTemplate(data: TemplateData) {
           />
         </div>
 
-        {/* Right: product image */}
+        {/* Right: product image — floats on the right with drop shadow */}
         {hasProd && (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 300,
-              height: 480,
-              marginLeft: 32,
+              width: 320,
+              height: 500,
+              marginLeft: 40,
               flexShrink: 0,
             }}
           >
             <img
               src={data.productImageUrl!}
               style={{
-                maxWidth: 280,
-                maxHeight: 460,
+                maxWidth: 300,
+                maxHeight: 480,
                 objectFit: 'contain',
-                filter: 'drop-shadow(0px 24px 48px rgba(0,0,0,0.6))',
+                filter: 'drop-shadow(0px 32px 56px rgba(0,0,0,0.7))',
               }}
             />
           </div>
@@ -282,10 +283,12 @@ export function HeroTemplate(data: TemplateData) {
 export function PT01BenefitTemplate(data: TemplateData) {
   const accent = getAccent(data)
   const secondary = getSecondary(data)
-  const title = truncate(getTitle(data), 50)
-  const subtitle = truncate(getSubtitle(data), 80)
+  const title = truncate(getTitle(data), 42)
+  const subtitle = truncate(getSubtitle(data), 70)
   const features = getFeatures(data, 3)
   const hasProd = Boolean(data.productImageUrl)
+
+  const headlineFontSize = title.length <= 18 ? 34 : title.length <= 26 ? 29 : title.length <= 34 ? 25 : 22
 
   return (
     <div
@@ -297,88 +300,91 @@ export function PT01BenefitTemplate(data: TemplateData) {
         overflow: 'hidden',
       }}
     >
-      {/* Left panel — dark gradient with copy */}
+      {/* Left panel — dark, editorial, generous padding */}
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          width: 305,
+          width: 290,
           height: 600,
-          background: `linear-gradient(160deg, ${NEAR_DARK} 0%, ${SLATE} 100%)`,
-          padding: '36px 28px',
-          justifyContent: 'center',
-          gap: 0,
+          background: `linear-gradient(155deg, ${DARK} 0%, ${NEAR_DARK} 50%, ${SLATE} 100%)`,
+          padding: '40px 28px 36px',
+          justifyContent: 'space-between',
           flexShrink: 0,
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        {/* Top accent bar */}
+        {/* Subtle accent glow top-right */}
         <div
           style={{
-            width: 36, height: 4, borderRadius: 2,
-            background: `linear-gradient(90deg, ${accent}, ${secondary})`,
-            marginBottom: 20, display: 'flex',
+            position: 'absolute', top: -40, right: -40,
+            width: 140, height: 140, borderRadius: 70,
+            background: `radial-gradient(circle, ${accent}20 0%, transparent 65%)`,
+            display: 'flex',
           }}
         />
 
-        {data.brandName && (
+        {/* Top section */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
+          {/* Accent bar + brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <div style={{ width: 28, height: 3, borderRadius: 2, background: `linear-gradient(90deg, ${accent}, ${secondary})`, display: 'flex' }} />
+            {data.brandName && (
+              <span style={{ fontSize: 9, fontWeight: 700, color: `${accent}cc`, textTransform: 'uppercase', letterSpacing: '0.2em' }}>
+                {data.brandName}
+              </span>
+            )}
+          </div>
+
+          {/* Headline */}
           <span
             style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: accent,
-              textTransform: 'uppercase',
-              letterSpacing: '0.16em',
-              marginBottom: 12,
+              fontSize: headlineFontSize,
+              fontWeight: 800,
+              fontFamily: getDisplayFont(data),
+              color: WHITE,
+              lineHeight: 1.15,
+              marginBottom: 14,
+              wordBreak: 'break-word',
             }}
           >
-            {data.brandName}
+            {title}
           </span>
-        )}
 
-        <span
-          style={{
-            fontSize: title.length > 30 ? 26 : 32,
-            fontWeight: 800,
-            fontFamily: getDisplayFont(data),
-            color: WHITE,
-            lineHeight: 1.15,
-            marginBottom: 14,
-          }}
-        >
-          {title}
-        </span>
+          {/* Subheadline */}
+          {subtitle && (
+            <span
+              style={{
+                fontSize: 12.5,
+                fontWeight: 400,
+                color: 'rgba(255,255,255,0.65)',
+                lineHeight: 1.6,
+                marginBottom: 24,
+              }}
+            >
+              {subtitle}
+            </span>
+          )}
+        </div>
 
-        {subtitle && (
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 400,
-              color: 'rgba(255,255,255,0.72)',
-              lineHeight: 1.55,
-              marginBottom: 22,
-            }}
-          >
-            {subtitle}
-          </span>
-        )}
-
+        {/* Feature list — bottom section */}
         {features.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: 'relative' }}>
             {features.map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                 <div
                   style={{
-                    width: 18, height: 18, borderRadius: 9,
-                    backgroundColor: `${accent}33`,
-                    border: `1.5px solid ${accent}`,
+                    width: 16, height: 16, borderRadius: 8,
+                    backgroundColor: accent,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, marginTop: 1,
+                    flexShrink: 0, marginTop: 2,
                   }}
                 >
-                  <span style={{ fontSize: 10, fontWeight: 700, color: accent }}>✓</span>
+                  <span style={{ fontSize: 9, fontWeight: 800, color: WHITE }}>✓</span>
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.82)', lineHeight: 1.4 }}>
-                  {truncate(f, 40)}
+                  {truncate(f, 36)}
                 </span>
               </div>
             ))}
@@ -386,14 +392,14 @@ export function PT01BenefitTemplate(data: TemplateData) {
         )}
       </div>
 
-      {/* Right panel — brand-tinted background so white-bg product photos stand out */}
+      {/* Right panel — clean light background, product hero */}
       <div
         style={{
           display: 'flex',
           flex: 1,
           height: 600,
           background: hasProd
-            ? `linear-gradient(160deg, ${accent}14 0%, ${accent}08 60%, ${WARM_WHITE} 100%)`
+            ? `linear-gradient(160deg, ${accent}16 0%, ${accent}06 50%, ${WARM_WHITE} 100%)`
             : WARM_WHITE,
           alignItems: 'center',
           justifyContent: 'center',
@@ -401,16 +407,13 @@ export function PT01BenefitTemplate(data: TemplateData) {
           overflow: 'hidden',
         }}
       >
-        {/* Subtle radial glow */}
+        {/* Radial glow centred behind product */}
         <div
           style={{
             position: 'absolute',
-            top: '50%',
-            left: '50%',
-            width: 260,
-            height: 260,
-            borderRadius: 130,
-            background: `radial-gradient(circle, ${accent}18 0%, transparent 70%)`,
+            top: '50%', left: '50%',
+            width: 300, height: 300, borderRadius: 150,
+            background: `radial-gradient(circle, ${accent}22 0%, transparent 65%)`,
             transform: 'translate(-50%, -50%)',
             display: 'flex',
           }}
@@ -420,21 +423,20 @@ export function PT01BenefitTemplate(data: TemplateData) {
           <img
             src={data.productImageUrl!}
             style={{
-              maxWidth: 240,
-              maxHeight: 340,
+              maxWidth: 270,
+              maxHeight: 400,
               objectFit: 'contain',
-              filter: 'drop-shadow(0px 16px 32px rgba(0,0,0,0.18))',
+              filter: 'drop-shadow(0px 20px 40px rgba(0,0,0,0.22))',
               position: 'relative',
             }}
           />
         ) : (
-          /* No product image: show product name prominently */
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: 24, textAlign: 'center' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${accent}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: accent, display: 'flex' }} />
+            <div style={{ width: 64, height: 64, borderRadius: 32, background: `linear-gradient(135deg, ${accent}33, ${secondary}22)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: accent, display: 'flex' }} />
             </div>
-            <span style={{ fontSize: 15, fontWeight: 700, color: TEXT_DARK, textAlign: 'center' }}>
-              {truncate(data.productName, 40)}
+            <span style={{ fontSize: 14, fontWeight: 700, color: TEXT_DARK, textAlign: 'center' }}>
+              {truncate(data.productName, 36)}
             </span>
           </div>
         )}
@@ -442,8 +444,7 @@ export function PT01BenefitTemplate(data: TemplateData) {
         {/* Bottom accent strip */}
         <div
           style={{
-            position: 'absolute',
-            bottom: 0, left: 0,
+            position: 'absolute', bottom: 0, left: 0,
             width: '100%', height: 4,
             background: `linear-gradient(90deg, ${accent}, ${secondary})`,
             display: 'flex',
@@ -790,10 +791,11 @@ export function PT03HowItWorksTemplate(data: TemplateData) {
               {/* Big step number */}
               <span
                 style={{
-                  fontSize: 72,
-                  fontWeight: 300,
-                  color: `${accent}33`,
+                  fontSize: 80,
+                  fontWeight: 800,
+                  color: `${accent}25`,
                   lineHeight: 1,
+                  fontFamily: getDisplayFont(data),
                 }}
               >
                 {String(i + 1).padStart(2, '0')}
@@ -1305,24 +1307,37 @@ export function PT07SocialProofTemplate(data: TemplateData) {
             display: 'flex',
             flexDirection: 'column',
             backgroundColor: WHITE,
-            borderRadius: 12,
-            padding: '24px 28px',
-            gap: 16,
-            boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-            border: `1px solid rgba(0,0,0,0.06)`,
+            borderRadius: 14,
+            padding: '28px 32px',
+            gap: 0,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
+            border: `1px solid rgba(0,0,0,0.05)`,
             flex: 1,
             margin: '16px 0',
             justifyContent: 'center',
+            position: 'relative',
+            overflow: 'hidden',
           }}
         >
+          {/* Accent left stripe */}
+          <div
+            style={{
+              position: 'absolute', top: 0, left: 0,
+              width: 4, height: '100%',
+              background: `linear-gradient(180deg, ${accent}, ${secondary})`,
+              display: 'flex',
+            }}
+          />
+
           {/* Large decorative quote mark */}
           <span
             style={{
-              fontSize: 72,
+              fontSize: 80,
               fontWeight: 800,
-              color: `${accent}33`,
-              lineHeight: 0.6,
-              marginBottom: 8,
+              color: `${accent}28`,
+              lineHeight: 0.7,
+              marginBottom: 12,
+              fontFamily: 'Georgia, serif',
             }}
           >
             "
@@ -1330,10 +1345,10 @@ export function PT07SocialProofTemplate(data: TemplateData) {
 
           <span
             style={{
-              fontSize: 18,
+              fontSize: 17,
               fontWeight: 400,
               color: TEXT_DARK,
-              lineHeight: 1.6,
+              lineHeight: 1.65,
               fontStyle: 'italic',
             }}
           >

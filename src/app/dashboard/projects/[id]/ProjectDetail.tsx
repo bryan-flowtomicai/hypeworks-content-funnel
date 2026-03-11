@@ -25,7 +25,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { StrategyAnalysis } from '@/app/api/projects/[id]/analyze/route'
+import type { StrategyAnalysis, ImageScore } from '@/app/api/projects/[id]/analyze/route'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -214,6 +214,91 @@ function StrategyPanel({ analysis }: { analysis: StrategyAnalysis }) {
   )
 }
 
+// ─── Image Audit Panel ────────────────────────────────────────────────────────
+
+function ScoreBar({ score }: { score: number }) {
+  const color = score >= 4 ? '#84cc16' : score >= 3 ? '#eab308' : '#ef4444'
+  return (
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+      <div
+        className="h-full rounded-full"
+        style={{ width: `${(score / 5) * 100}%`, backgroundColor: color }}
+      />
+    </div>
+  )
+}
+
+function ImageAuditPanel({ scores }: { scores: ImageScore[] }) {
+  if (!scores || scores.length === 0) return null
+
+  return (
+    <div className="mt-6">
+      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        Listing Image Audit
+      </h3>
+      <div className="space-y-3">
+        {scores.map((score, i) => (
+          <div key={i} className="overflow-hidden rounded-xl border border-border bg-card">
+            {/* Header row */}
+            <div className="flex items-center justify-between border-b border-border px-5 py-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  Image {score.image_number}
+                </span>
+                <span className="rounded-full bg-white/5 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/40">
+                  {score.type}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-bold">{score.score.toFixed(1)}</span>
+                <span className="text-xs text-muted-foreground">/5</span>
+              </div>
+            </div>
+
+            {/* Body: dimensions + insights */}
+            <div className="flex flex-col sm:flex-row sm:divide-x sm:divide-border">
+              {/* Dimension scores */}
+              <div className="flex flex-col gap-3.5 p-5 sm:w-64 sm:shrink-0">
+                {(score.dimensions ?? []).map((dim, j) => (
+                  <div key={j}>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">{dim.label}</span>
+                      <span className="text-xs font-semibold">
+                        {dim.score.toFixed(1)}{' '}
+                        <span className="font-normal text-muted-foreground">out of 5</span>
+                      </span>
+                    </div>
+                    <ScoreBar score={dim.score} />
+                  </div>
+                ))}
+              </div>
+
+              {/* 3-column insights */}
+              <div className="flex flex-1 flex-col divide-y divide-border">
+                {[
+                  { n: 1, heading: 'What we see', text: score.what_we_see },
+                  { n: 2, heading: 'Why it matters', text: score.why_it_matters },
+                  { n: 3, heading: 'How to fix', text: score.how_to_fix },
+                ].map((item) => (
+                  <div key={item.n} className="flex gap-3 px-5 py-3.5">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/5 text-[10px] font-bold text-muted-foreground">
+                      {item.n}
+                    </span>
+                    <div>
+                      <p className="mb-0.5 text-xs font-semibold">{item.heading}</p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">{item.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Slot Card ────────────────────────────────────────────────────────────────
 
 function SlotCard({
@@ -371,9 +456,9 @@ export function ProjectDetail({
   const [error, setError] = useState<string | null>(null)
   const [lightbox, setLightbox] = useState<{ url: string; name: string; width: number; height: number } | null>(null)
 
-  // Auto-trigger analysis if project has reviews/images but no analysis yet
+  // Auto-trigger analysis if project has no analysis yet (works with or without reviews)
   useEffect(() => {
-    if (!currentAnalysis && (productReviews.length > 0 || productImages.length > 0)) {
+    if (!currentAnalysis) {
       runAnalysis()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -550,19 +635,17 @@ export function ProjectDetail({
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {(productReviews.length > 0 || productImages.length > 0) && (
-            <Button
-              variant="outline"
-              onClick={runAnalysis}
-              disabled={analyzing}
-              title="Re-run strategy analysis"
-            >
-              {analyzing
-                ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Analyzing...</>
-                : <><RefreshCw className="mr-1.5 h-4 w-4" /> Re-analyze</>
-              }
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            onClick={runAnalysis}
+            disabled={analyzing}
+            title="Re-run strategy analysis"
+          >
+            {analyzing
+              ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Analyzing...</>
+              : <><RefreshCw className="mr-1.5 h-4 w-4" /> Re-analyze</>
+            }
+          </Button>
           <Button
             variant="outline"
             onClick={deleteProject}
@@ -586,21 +669,22 @@ export function ProjectDetail({
           <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
           <div>
             <p className="text-sm font-medium text-primary">Analyzing product strategy...</p>
-            <p className="text-xs text-muted-foreground">Extracting conversion drivers from {productReviews.length} reviews</p>
+            <p className="text-xs text-muted-foreground">
+              {productReviews.length > 0
+                ? `Extracting conversion drivers from ${productReviews.length} reviews`
+                : 'Generating conversion strategy from product data'}
+            </p>
           </div>
-        </div>
-      )}
-
-      {/* No data hint */}
-      {!currentAnalysis && !analyzing && productReviews.length === 0 && productImages.length === 0 && (
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-card/50 px-4 py-3 text-xs text-muted-foreground">
-          <Target className="h-3.5 w-3.5 shrink-0" />
-          Paste an Amazon URL when creating projects to unlock strategy analysis.
         </div>
       )}
 
       {/* Strategy panel */}
       {currentAnalysis && <StrategyPanel analysis={currentAnalysis} />}
+
+      {/* Image audit panel — listing image scores */}
+      {currentAnalysis?.image_scores && currentAnalysis.image_scores.length > 0 && (
+        <ImageAuditPanel scores={currentAnalysis.image_scores} />
+      )}
 
       {/* Error */}
       {error && (
