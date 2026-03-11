@@ -1,5 +1,7 @@
 import { fal } from '@fal-ai/client'
+import { proxyImageToFalStorage } from './imageProxy'
 import type { ImageFormatType } from '@/types'
+import type { ImageIntent } from '@/lib/templates/types'
 
 let configured = false
 
@@ -12,37 +14,48 @@ function ensureConfig() {
   configured = true
 }
 
-// ─── Model selection per format ─────────────────────────────────────────────
+// ─── Model types ─────────────────────────────────────────────────────────────
 
-type ModelId = 'fal-ai/recraft-v3' | 'fal-ai/flux-2-flex' | 'none'
+export type GenerationModel =
+  | 'fal-ai/flux-pro/kontext'    // image-to-image: product placed in scene
+  | 'fal-ai/flux-pro/v1.1-ultra' // text-to-image: highest quality lifestyle scenes
+  | 'fal-ai/ideogram/v3'         // text-to-image: design/text-capable (standard format)
+  | 'none'
 
-interface ModelConfig {
-  model: ModelId
-  style?: string
-  styleId?: string
+// Backward-compat shim used by prompt.ts
+export interface ModelConfig {
+  model: GenerationModel
 }
 
-const FORMAT_MODELS: Record<ImageFormatType, ModelConfig> = {
-  hero: { model: 'fal-ai/flux-2-flex' },
-  portrait: { model: 'fal-ai/flux-2-flex' },
-  standard: { model: 'fal-ai/recraft-v3', style: 'digital_illustration' },
-  square: { model: 'fal-ai/recraft-v3', style: 'digital_illustration' },
-  banner_wide: { model: 'none' },
-}
-
+// Returns a model hint for prompt generation — not the final routing decision
 export function getModelForFormat(format: ImageFormatType): ModelConfig {
-  return FORMAT_MODELS[format]
+  if (format === 'banner_wide') return { model: 'none' }
+  if (format === 'standard') return { model: 'fal-ai/ideogram/v3' }
+  return { model: 'fal-ai/flux-pro/kontext' }
 }
 
-// ─── Image generation ───────────────────────────────────────────────────────
+// ─── Aspect ratios for flux-pro/v1.1-ultra (no custom dimensions supported) ──
+
+const ULTRA_ASPECT_RATIO: Partial<Record<ImageFormatType, string>> = {
+  hero: '16:9',    // 970×600 ≈ 16:9
+  portrait: '3:4', // 300×400 = 3:4
+  square: '1:1',   // 600×600
+}
+
+// ─── Intents that benefit from Kontext (product-in-scene placement) ──────────
+
+const KONTEXT_INTENTS: ImageIntent[] = ['lifestyle', 'benefit', 'feature_grid']
+
+// ─── Image generation ────────────────────────────────────────────────────────
 
 export interface GenerateBackgroundInput {
   prompt: string
   width: number
   height: number
   format: ImageFormatType
+  intent?: ImageIntent
   brandColors?: string[]
-  referenceImageUrl?: string  // product photo — enables image-to-image
+  referenceImageUrl?: string  // product photo — triggers Kontext when usable
 }
 
 export interface GenerateBackgroundResult {
@@ -54,105 +67,140 @@ export interface GenerateBackgroundResult {
 export async function generateBackground(
   input: GenerateBackgroundInput
 ): Promise<GenerateBackgroundResult | null> {
-  const config = getModelForFormat(input.format)
-
-  if (config.model === 'none') return null
+  if (input.format === 'banner_wide') return null
 
   ensureConfig()
 
-  // Use image-to-image when a product reference is available (Flux formats only)
-  if (input.referenceImageUrl && config.model === 'fal-ai/flux-2-flex') {
-    return generateWithFluxImageToImage(input)
+  // ── Proxy reference image to fal.ai storage (fixes Amazon CDN 422 errors) ──
+  let proxiedImageUrl: string | undefined
+  if (input.referenceImageUrl) {
+    try {
+      proxiedImageUrl = await proxyImageToFalStorage(input.referenceImageUrl)
+    } catch (err) {
+      // Non-fatal: fall through to text-to-image
+      console.warn('[generate] Reference image proxy failed, using text-to-image:', err)
+    }
   }
 
-  if (config.model === 'fal-ai/recraft-v3') {
-    return generateWithRecraft(input, config)
+  // ── Route to best model ───────────────────────────────────────────────────
+  //
+  // Kontext  — product reference available + visual format + lifestyle/benefit/feature intent
+  //            → places the actual product into a freshly generated scene
+  //
+  // Ideogram — standard format (970×300 has no clean aspect-ratio preset in Ultra)
+  //            OR design/text-heavy intents (social proof quote, feature grid)
+  //
+  // Ultra    — pure photorealistic scene generation, no product reference needed
+  //            → hero/portrait/square lifestyle scenes, how-it-works, problem/solution
+
+  if (
+    proxiedImageUrl &&
+    ['hero', 'portrait', 'square'].includes(input.format) &&
+    KONTEXT_INTENTS.includes(input.intent ?? 'lifestyle')
+  ) {
+    return generateWithKontext(input, proxiedImageUrl)
   }
 
-  return generateWithFlux2(input)
+  if (
+    input.format === 'standard' ||
+    input.intent === 'social_proof' ||
+    input.intent === 'feature_grid'
+  ) {
+    return generateWithIdeogram(input)
+  }
+
+  return generateWithUltra(input)
 }
 
-async function generateWithRecraft(
+// ─── Kontext: place the product into a scene ─────────────────────────────────
+
+async function generateWithKontext(
   input: GenerateBackgroundInput,
-  config: ModelConfig
+  imageUrl: string
 ): Promise<GenerateBackgroundResult> {
-  const falInput: Record<string, unknown> = {
-    prompt: input.prompt,
-    image_size: { width: input.width, height: input.height },
-  }
-
-  if (config.style) falInput.style = config.style
-
-  if (input.brandColors?.length) {
-    falInput.colors = input.brandColors
-      .filter(Boolean)
-      .slice(0, 5)
-      .map((c) => ({ rgb: hexToRgb(c) }))
-  }
-
-  const result = await fal.subscribe('fal-ai/recraft-v3', {
-    input: falInput,
-    pollInterval: 3000,
-  })
-
-  const data = result.data as { images: Array<{ url: string }> }
-
-  return {
-    imageUrl: data.images[0].url,
-    requestId: result.requestId ?? '',
-    model: 'recraft-v3',
-  }
-}
-
-async function generateWithFlux2(
-  input: GenerateBackgroundInput
-): Promise<GenerateBackgroundResult> {
-  const result = await fal.subscribe('fal-ai/flux-2-flex', {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = await fal.subscribe('fal-ai/flux-pro/kontext' as any, {
     input: {
       prompt: input.prompt,
+      image_url: imageUrl,
       image_size: { width: input.width, height: input.height },
+      guidance_scale: 3.5,
+      output_format: 'png',
+      safety_tolerance: '5',
     },
     pollInterval: 3000,
   })
 
   const data = result.data as { images: Array<{ url: string }> }
-
   return {
     imageUrl: data.images[0].url,
     requestId: result.requestId ?? '',
-    model: 'flux-2-flex',
+    model: 'flux-pro-kontext',
   }
 }
 
-// Image-to-image: product reference photo guides the generated scene
-// strength 0.75 = 75% generated scene, 25% reference structure preserved
-async function generateWithFluxImageToImage(
+// ─── Ultra: highest quality text-to-image ────────────────────────────────────
+
+async function generateWithUltra(
   input: GenerateBackgroundInput
 ): Promise<GenerateBackgroundResult> {
-  const result = await fal.subscribe('fal-ai/flux/dev/image-to-image', {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aspectRatio = ULTRA_ASPECT_RATIO[input.format] ?? '16:9'
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = await fal.subscribe('fal-ai/flux-pro/v1.1-ultra' as any, {
     input: {
       prompt: input.prompt,
-      image_url: input.referenceImageUrl,
-      strength: 0.78,
-      num_inference_steps: 28,
-    } as any,
+      aspect_ratio: aspectRatio,
+      output_format: 'png',
+      safety_tolerance: '5',
+      raw: false,
+    },
     pollInterval: 3000,
   })
 
   const data = result.data as { images: Array<{ url: string }> }
-
   return {
     imageUrl: data.images[0].url,
     requestId: result.requestId ?? '',
-    model: 'flux-dev-i2i',
+    model: 'flux-pro-ultra',
   }
 }
 
-// ─── Utilities ──────────────────────────────────────────────────────────────
+// ─── Ideogram: design-capable, exact dimensions, best for text + standard ───
 
-function hexToRgb(hex: string): [number, number, number] {
-  const clean = hex.replace('#', '')
-  const num = parseInt(clean, 16)
-  return [(num >> 16) & 255, (num >> 8) & 255, num & 255]
+async function generateWithIdeogram(
+  input: GenerateBackgroundInput
+): Promise<GenerateBackgroundResult> {
+  const isDesignIntent =
+    input.intent === 'social_proof' || input.intent === 'feature_grid'
+
+  const falInput: Record<string, unknown> = {
+    prompt: input.prompt,
+    image_size: { width: input.width, height: input.height },
+    style: isDesignIntent ? 'design' : 'realistic',
+    expand_prompt: false,
+  }
+
+  // Wire brand colors into Ideogram's color palette for branded results
+  if (input.brandColors?.length) {
+    const validColors = input.brandColors.filter(Boolean).slice(0, 4)
+    if (validColors.length) {
+      falInput.color_palette = {
+        members: validColors.map((hex) => ({ color_hex: hex })),
+      }
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = await fal.subscribe('fal-ai/ideogram/v3' as any, {
+    input: falInput,
+    pollInterval: 3000,
+  })
+
+  const data = result.data as { images: Array<{ url: string }> }
+  return {
+    imageUrl: data.images[0].url,
+    requestId: result.requestId ?? '',
+    model: 'ideogram-v3',
+  }
 }

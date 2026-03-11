@@ -202,24 +202,23 @@ export async function POST(
           height: spec.height,
         })
 
-        // Phase 2: Generate background — use image-to-image for hero/portrait slots
+        // Phase 2: Generate background
+        // generate.ts handles model routing: Kontext (product in scene), Ideogram (design),
+        // or Ultra (cinematic text-to-image). The proxy fixes Amazon CDN 422 errors.
         let backgroundImageUrl: string | null = null
         let requestId = ''
         let modelUsed = 'none'
 
         if (prompt !== 'SKIP') {
-          // Use product reference image for visual formats (lifestyle/benefit/how-it-works)
-          const useReference =
-            primaryProductImage &&
-            ['lifestyle', 'benefit', 'how_it_works', 'social_proof'].includes(slot.intent)
-
           const bgResult = await generateBackground({
             prompt,
             width: spec.width,
             height: spec.height,
             format: slot.format,
+            intent: slot.intent,
             brandColors: project.brand_colors,
-            referenceImageUrl: useReference ? primaryProductImage : undefined,
+            // Always pass the product reference — generate.ts decides when to use it
+            referenceImageUrl: primaryProductImage ?? undefined,
           })
 
           if (bgResult) {

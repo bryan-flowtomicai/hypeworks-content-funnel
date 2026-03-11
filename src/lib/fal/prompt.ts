@@ -1,7 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { ImageFormatType } from '@/types'
 import type { ImageIntent } from '@/lib/templates/types'
-import { getModelForFormat } from './generate'
 
 export interface PromptContext {
   productName: string
@@ -15,31 +14,75 @@ export interface PromptContext {
   productReviews?: string[]  // scraped customer review snippets
   intent?: ImageIntent       // creative goal for this specific image
   copyBrief?: string         // strategy-generated creative brief for this slot
-  headline?: string          // the headline appearing on this image — scene should support it
+  headline?: string          // the headline appearing on this image — scene must support it
   format: ImageFormatType
   width: number
   height: number
 }
 
-// Per-format base guidance
+// ─── Per-format base guidance ─────────────────────────────────────────────────
+
 const FORMAT_BASE: Record<ImageFormatType, string> = {
-  hero: `This is a HERO banner (970x600). Wide cinematic image, premium and editorial.`,
-  standard: `This is a STANDARD module (970x300). Wide, clean, works as infographic background.`,
-  square: `This is a SQUARE module (600x600). Centered, product-focused, slight elevation angle.`,
-  portrait: `This is a PORTRAIT module (300x400). Vertical product/lifestyle shot.`,
-  banner_wide: `This is a BANNER (970x130). No image generation needed — return "SKIP" only.`,
+  hero:        `This is a HERO banner (970×600). Wide cinematic image, premium and editorial.`,
+  standard:    `This is a STANDARD module (970×300). Wide, clean, graphic — works as infographic background.`,
+  square:      `This is a SQUARE module (600×600). Centered, product-focused, slight elevation angle.`,
+  portrait:    `This is a PORTRAIT module (300×400). Vertical product/lifestyle shot.`,
+  banner_wide: `This is a BANNER (970×130). No image generation needed — return "SKIP" only.`,
 }
 
-// Per-intent creative direction — overrides the generic format guidance
+// ─── Per-intent creative direction ──────────────────────────────────────────
+
 const INTENT_GUIDANCE: Partial<Record<ImageIntent, string>> = {
-  lifestyle: `Aspirational lifestyle scene — show the product being enjoyed by its target user in a real-world environment. Focus on emotion and atmosphere. Warm, natural lighting.`,
-  benefit: `Dramatic benefit-focused image — abstract or symbolic visual that represents the core value proposition. Bold composition, strong contrast. The scene should communicate transformation or improvement.`,
-  how_it_works: `Clean, instructional background — subtle texture or workspace that suggests process and clarity. Muted tones, minimal clutter. Plenty of negative space for text overlays.`,
-  feature_grid: `Technical, precise background — clean studio or surface texture. Neutral or slightly tinted. Should feel detailed and trustworthy like a product spec sheet backdrop.`,
-  social_proof: `Warm, human background — soft natural light suggesting authenticity and happiness. Could be hands holding the product, a candid moment of use, or a warm home environment.`,
-  problem_solution: `Before/after contrast scene — one side darker and more chaotic, one side clean and bright. Or: show the problem being solved (mess cleaned, pain relieved, task simplified).`,
-  comparison: `Clean, neutral product showcase environment — white or off-white studio feel that lets the product stand out. Should feel confident and premium, like a comparison ad.`,
+  lifestyle:
+    `Aspirational lifestyle scene. Show the product in its natural environment being enjoyed by the target customer. Warm, natural light. Authentic and aspirational.`,
+  benefit:
+    `Dramatic benefit visualization. Abstract or symbolic scene that communicates the core transformation or value. Bold composition, strong emotional contrast. The visual must reinforce the headline.`,
+  how_it_works:
+    `Clean, instructional background. Subtle workspace or surface texture suggesting process and clarity. Muted tones, plenty of negative space for step-by-step text overlays.`,
+  feature_grid:
+    `Technical product showcase. Clean studio surface or elegant flat-lay. Neutral or lightly tinted. Feels detailed and precise, like a premium product spec sheet.`,
+  social_proof:
+    `Warm, human, authentic scene. Soft natural light, hands with product or candid moment of use. Communicates genuine happiness and real-world results.`,
+  problem_solution:
+    `Split or contrast composition. One side represents the problem (darker, chaotic, frustrated), the other the solution (bright, clean, relieved). Powerful visual storytelling.`,
+  comparison:
+    `Clean premium studio environment. Confident neutral background that lets the product shine. Feels like an award-winning comparison ad.`,
 }
+
+// ─── Model-specific prompt guidance ─────────────────────────────────────────
+
+function getModelHint(format: ImageFormatType, intent?: ImageIntent): string {
+  // Ideogram for standard format and design/text intents
+  if (
+    format === 'standard' ||
+    intent === 'feature_grid' ||
+    intent === 'social_proof'
+  ) {
+    return `The target model is Ideogram V3 in design mode — it renders crisp typography and graphic layouts.
+Write a prompt that describes a DESIGNED COMPOSITION: describe the layout, color palette, typography treatment, and visual hierarchy.
+Example: "Minimalist product infographic on deep navy background, clean sans-serif text, product hero on left, three circular benefit icons on right, warm gold accent lines"
+NO literal text content in the prompt (text is overlaid separately) — describe the DESIGN STYLE and STRUCTURE.`
+  }
+
+  // Kontext / Ultra for lifestyle formats
+  if (intent === 'lifestyle' || intent === 'benefit') {
+    return `The target model places YOUR ACTUAL PRODUCT (reference photo provided) into a freshly generated scene.
+Write a prompt that describes WHERE and HOW the product appears — do NOT describe what the product looks like.
+Start with the scene, environment, and mood. Be extremely specific about:
+- Setting (marble countertop / rustic wood table / morning window light kitchen)
+- Lighting (golden hour / soft diffused / dramatic side light)
+- Camera angle (slightly elevated 3/4 view / close-up product detail / wide lifestyle shot)
+- Mood (premium and aspirational / cozy and authentic / energetic and bold)
+Example: "Premium supplement jar on white marble countertop, Scandinavian kitchen with natural morning light streaming through a window, editorial product photography, slight elevation angle, bokeh background"`
+  }
+
+  return `The target model is FLUX Pro Ultra — photorealistic cinematic quality.
+Write a highly detailed scene description with specific lighting conditions, camera angle, environment, and atmosphere.
+Be specific and evocative — include sensory details. Avoid generic descriptions like "professional photography".
+Example: "Overhead flat-lay of wellness products on aged oak wood surface, late afternoon sun casting long shadows, dried lavender sprigs, small ceramic dishes with herbs, analog film grain texture, lifestyle photography"`
+}
+
+// ─── Main export ──────────────────────────────────────────────────────────────
 
 export async function generateOptimizedPrompt(
   ctx: PromptContext
@@ -51,35 +94,31 @@ export async function generateOptimizedPrompt(
   }
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const modelConfig = getModelForFormat(ctx.format)
 
-  const modelHint =
-    modelConfig.model === 'fal-ai/recraft-v3'
-      ? 'The target model is Recraft V3 (digital illustration style). Prompts should describe a clean, graphic illustration rather than a photograph.'
-      : 'The target model is Flux 2 (photorealistic). Prompts should describe a photorealistic scene with specific lighting, camera angle, and environment details.'
-
+  const modelHint = getModelHint(ctx.format, ctx.intent)
   const intentGuidance = ctx.intent ? INTENT_GUIDANCE[ctx.intent] : undefined
+
   const reviewContext =
     ctx.productReviews?.length
-      ? `\nCUSTOMER REVIEWS (use this language to make the image context more authentic):\n${ctx.productReviews.slice(0, 3).map((r, i) => `${i + 1}. "${r}"`).join('\n')}`
+      ? `\nCUSTOMER VOICE (authentic language from real buyers — let this inform mood and messaging):\n${ctx.productReviews.slice(0, 3).map((r, i) => `${i + 1}. "${r}"`).join('\n')}`
       : ''
 
-  // Strategy context — highest priority creative guidance
+  // Strategy context drives the prompt — highest priority
   const strategyContext = ctx.copyBrief
-    ? `\nSLOT BRIEF (follow this precisely): ${ctx.copyBrief}`
+    ? `\nSLOT BRIEF (follow this precisely — it is based on actual customer review data):\n${ctx.copyBrief}`
     : ''
   const headlineContext = ctx.headline
-    ? `\nIMAGE HEADLINE (the background must visually support this message): "${ctx.headline}"`
+    ? `\nHEADLINE ON THIS IMAGE (the scene must visually reinforce this message):\n"${ctx.headline}"`
     : ''
 
   try {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 400,
+      max_tokens: 500,
       messages: [
         {
           role: 'user',
-          content: `You are an expert Amazon A+ content visual designer. Generate a highly specific image generation prompt.
+          content: `You are a world-class creative director specializing in Amazon A+ content. Your job is to write an image generation prompt that will produce jaw-dropping, conversion-driving visuals.
 
 PRODUCT INFO:
 - Name: ${ctx.productName}
@@ -87,22 +126,23 @@ ${ctx.brandName ? `- Brand: ${ctx.brandName}` : ''}
 ${ctx.category ? `- Category: ${ctx.category}` : ''}
 ${ctx.keyFeatures?.length ? `- Key Features: ${ctx.keyFeatures.slice(0, 5).join('; ')}` : ''}
 ${ctx.targetAudience ? `- Target Audience: ${ctx.targetAudience}` : ''}
-${ctx.contentTone ? `- Tone: ${ctx.contentTone}` : ''}
+${ctx.contentTone ? `- Brand Tone: ${ctx.contentTone}` : ''}
 ${ctx.brandColors?.length ? `- Brand Colors: ${ctx.brandColors.filter(Boolean).join(', ')}` : ''}
-${ctx.description ? `- Description: ${ctx.description.substring(0, 250)}` : ''}
+${ctx.description ? `- Description: ${ctx.description.substring(0, 300)}` : ''}
 ${reviewContext}
 
 FORMAT: ${FORMAT_BASE[ctx.format]}
 ${intentGuidance ? `\nCREATIVE INTENT: ${intentGuidance}` : ''}${strategyContext}${headlineContext}
 
-MODEL HINT: ${modelHint}
+MODEL INSTRUCTIONS:
+${modelHint}
 
 RULES:
-- Be SPECIFIC to this exact product, not generic
-- The background scene must emotionally reinforce the headline/brief
-- No text, logos, or overlays in the image (text is overlaid separately)
-- Vary lighting, environment, and composition based on the intent
-- Return ONLY the prompt — no explanation, no quotes, no prefixes`,
+1. Be HYPER-SPECIFIC to this product — no generic photography language
+2. Describe scene elements, lighting quality, atmosphere, and mood concretely
+3. NEVER include text, logos, or UI elements (text is overlaid separately via code)
+4. Think like a luxury brand art director: what scene would make a customer feel something?
+5. Return ONLY the prompt — no explanation, no quotes, no prefix like "Prompt:"`,
         },
       ],
     })
@@ -112,10 +152,12 @@ RULES:
 
     return text || buildFallbackPrompt(ctx)
   } catch (err) {
-    console.error('Prompt optimization failed, using fallback:', err)
+    console.error('[prompt] Optimization failed, using fallback:', err)
     return buildFallbackPrompt(ctx)
   }
 }
+
+// ─── Fallback (no Claude API key) ────────────────────────────────────────────
 
 function buildFallbackPrompt(ctx: PromptContext): string {
   const toneMap: Record<string, string> = {
@@ -127,9 +169,9 @@ function buildFallbackPrompt(ctx: PromptContext): string {
   }
 
   const intentExtra: Partial<Record<ImageIntent, string>> = {
-    lifestyle: 'aspirational in-use scene with natural lighting',
-    benefit: 'dramatic bold composition symbolizing transformation',
-    how_it_works: 'clean workspace background with soft neutral tones',
+    lifestyle: 'aspirational in-use scene, warm natural light',
+    benefit: 'dramatic composition symbolizing transformation',
+    how_it_works: 'clean workspace, soft neutral tones, negative space',
     feature_grid: 'technical studio backdrop, precise and detailed',
     social_proof: 'warm candid moment, hands with product, natural light',
     problem_solution: 'before-after contrast, one side dark one bright',
