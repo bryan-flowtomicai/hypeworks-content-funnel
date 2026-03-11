@@ -82,20 +82,15 @@ export async function POST(
       .update({ status: 'generating' })
       .eq('id', projectId)
 
-    const results: Array<{
-      format: string
-      status: string
-      imageUrl?: string
-      error?: string
-      model?: string
-    }> = []
+    const scraped = project.scraped_data as Record<string, unknown> | null
 
-    for (const format of formats) {
-      const spec = IMAGE_FORMATS[format]
-      if (!spec) continue
+    // ── Run all formats in parallel ──────────────────────────────────────
+    const settled = await Promise.allSettled(
+      formats.map(async (format) => {
+        const spec = IMAGE_FORMATS[format]
+        if (!spec) throw new Error(`Unknown format: ${format}`)
 
-      try {
-        // ── Phase 1: Generate optimized prompt via Claude ──────────────
+        // Phase 1: Generate optimized prompt via Claude
         const prompt = await generateOptimizedPrompt({
           productName: project.product_name ?? project.name,
           brandName: project.brand_name ?? undefined,
@@ -105,8 +100,7 @@ export async function POST(
           contentTone: project.content_tone,
           brandColors: project.brand_colors,
           description:
-            (project.scraped_data as Record<string, string> | null)
-              ?.description ??
+            (scraped?.description as string) ??
             project.description ??
             undefined,
           format,
@@ -114,7 +108,7 @@ export async function POST(
           height: spec.height,
         })
 
-        // ── Phase 1b: Generate background image via fal.ai ────────────
+        // Phase 1b: Generate background image via fal.ai
         let backgroundImageUrl: string | null = null
         let requestId = ''
         let modelUsed = 'none'
@@ -135,15 +129,11 @@ export async function POST(
           }
         }
 
-        // ── Phase 2: Composite via Satori + resvg ─────────────────────
-        const scraped = project.scraped_data as Record<string, unknown> | null
-
+        // Phase 2: Composite via Satori + resvg
         const templateData: TemplateData = {
           format,
           productName: project.product_name ?? project.name,
-          displayTitle:
-            (scraped?.display_title as string) ||
-            undefined,
+          displayTitle: (scraped?.display_title as string) || undefined,
           tagline: (scraped?.tagline as string) || undefined,
           brandName: project.brand_name ?? undefined,
           keyFeatures: project.key_features ?? [],
@@ -156,20 +146,18 @@ export async function POST(
 
         const finalPng = await renderTemplate(templateData)
 
-        // ── Upload to Supabase Storage ────────────────────────────────
-        const storagePath = `${user.id}/${projectId}/generated/${Date.now()}-${format}.png`
+        // Upload to Supabase Storage — use format + random suffix to avoid collisions
+        const storagePath = `${user.id}/${projectId}/generated/${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${format}.png`
 
         const { error: uploadError } = await admin.storage
           .from('generated-images')
           .upload(storagePath, finalPng, { contentType: 'image/png' })
 
-        if (uploadError) {
-          throw new Error(`Storage upload failed: ${uploadError.message}`)
-        }
+        if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`)
 
-        const {
-          data: { publicUrl },
-        } = admin.storage.from('generated-images').getPublicUrl(storagePath)
+        const { data: { publicUrl } } = admin.storage
+          .from('generated-images')
+          .getPublicUrl(storagePath)
 
         const { error: insertError } = await admin
           .from('generated_images')
@@ -186,38 +174,39 @@ export async function POST(
             status: 'complete',
           })
 
-        if (insertError) {
-          throw new Error(`DB insert failed: ${insertError.message}`)
-        }
+        if (insertError) throw new Error(`DB insert failed: ${insertError.message}`)
 
-        results.push({
-          format,
-          status: 'complete',
-          imageUrl: publicUrl,
-          model: modelUsed,
-        })
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Unknown generation error'
+        return { format, status: 'complete' as const, imageUrl: publicUrl, model: modelUsed }
+      })
+    )
+
+    // Record failures in DB and build results array
+    const results = await Promise.all(
+      settled.map(async (result, i) => {
+        if (result.status === 'fulfilled') return result.value
+
+        const format = formats[i]
+        const message = result.reason instanceof Error
+          ? result.reason.message
+          : 'Unknown generation error'
+
         console.error(`Generation failed for format ${format}:`, message)
 
-        await admin
-          .from('generated_images')
-          .insert({
-            project_id: projectId,
-            user_id: user.id,
-            storage_path: '',
-            format_type: format,
-            width: spec.width,
-            height: spec.height,
-            prompt_used: '',
-            status: 'failed',
-          })
-          .then(() => {})
+        const spec = IMAGE_FORMATS[format]
+        await admin.from('generated_images').insert({
+          project_id: projectId,
+          user_id: user.id,
+          storage_path: '',
+          format_type: format,
+          width: spec?.width ?? 0,
+          height: spec?.height ?? 0,
+          prompt_used: '',
+          status: 'failed',
+        })
 
-        results.push({ format, status: 'failed', error: message })
-      }
-    }
+        return { format, status: 'failed' as const, error: message }
+      })
+    )
 
     const successCount = results.filter((r) => r.status === 'complete').length
 

@@ -110,6 +110,8 @@ export default function NewProjectPage() {
         display_title: data.display_title || '',
         tagline: data.tagline || '',
         brand_colors: data.brand_colors || [],
+        product_images: data.product_images || [],
+        source_url: url.trim(),
       })
       setExtractionMethod(data.extraction_method ?? 'regex')
       setScraped(true)

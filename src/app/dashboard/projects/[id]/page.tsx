@@ -1,9 +1,7 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { IMAGE_FORMATS, type Project, type GeneratedImage } from '@/types'
-import { ArrowLeft, Download, Sparkles } from 'lucide-react'
-import { GenerateButton, DeleteProjectButton } from './actions'
+import type { GeneratedImage } from '@/types'
+import { ProjectDetail } from './ProjectDetail'
 
 export default async function ProjectDetailPage({
   params,
@@ -24,8 +22,7 @@ export default async function ProjectDetailPage({
     .eq('user_id', user!.id)
     .single()
 
-  const project = projectData as Project | null
-  if (!project) notFound()
+  if (!projectData) notFound()
 
   const { data: imagesData } = await supabase
     .from('generated_images')
@@ -34,152 +31,11 @@ export default async function ProjectDetailPage({
     .eq('user_id', user!.id)
     .order('created_at', { ascending: false })
 
-  const images = (imagesData ?? []) as GeneratedImage[]
-  const completedImages = images.filter((img) => img.status === 'complete')
-  const isGenerating = project.status === 'generating'
-
   return (
-    <div>
-      <Link
-        href="/dashboard/projects"
-        className="mb-8 inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="h-3 w-3" /> Back to projects
-      </Link>
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">
-            {project.name}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {project.product_name ?? 'No product name'}
-            {project.brand_name ? ` \u2014 ${project.brand_name}` : ''}
-          </p>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          <DeleteProjectButton projectId={project.id} />
-        </div>
-      </div>
-
-      {/* Generate button + status banners */}
-      <div className="mt-6">
-        <GenerateButton projectId={project.id} />
-      </div>
-
-      {/* Metadata */}
-      <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4">
-        {[
-          { label: 'Status', value: isGenerating ? 'generating...' : project.status },
-          { label: 'Category', value: project.category ?? '\u2014' },
-          { label: 'Tone', value: project.content_tone },
-          { label: 'Images', value: String(completedImages.length) },
-        ].map((item) => (
-          <div key={item.label} className="bg-card p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              {item.label}
-            </p>
-            <p className="mt-1.5 text-sm font-medium capitalize">
-              {item.value}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Brand colors preview */}
-      {project.brand_colors?.filter(Boolean).length > 0 && (
-        <div className="mt-4 flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Brand colors
-          </span>
-          {project.brand_colors.filter(Boolean).map((color, i) => (
-            <div
-              key={i}
-              className="h-5 w-5 rounded-full border border-border"
-              style={{ backgroundColor: color }}
-              title={color}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Key features */}
-      {project.key_features?.length > 0 && (
-        <div className="mt-6 rounded-xl border border-border bg-card p-6">
-          <h2 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Key features
-          </h2>
-          <ul className="mt-3 space-y-1.5">
-            {project.key_features.map((f, i) => (
-              <li
-                key={i}
-                className="flex items-start gap-2 text-sm text-muted-foreground"
-              >
-                <span className="mt-0.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
-                {f}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Images */}
-      <div className="mt-12">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Generated images
-        </h2>
-
-        {!completedImages.length && !isGenerating ? (
-          <div className="mt-4 rounded-xl border border-dashed border-border py-20 text-center">
-            <Sparkles className="mx-auto h-8 w-8 text-subtle" />
-            <p className="mt-3 text-sm text-muted-foreground">
-              No images yet. Click &quot;Generate&quot; to create A+ content.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {completedImages.map((img) => {
-              const spec =
-                IMAGE_FORMATS[img.format_type as keyof typeof IMAGE_FORMATS]
-              return (
-                <div
-                  key={img.id}
-                  className="group overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/20"
-                >
-                  {img.public_url && (
-                    <div className="relative">
-                      <img
-                        src={img.public_url}
-                        alt={img.format_type}
-                        className="aspect-video w-full object-cover"
-                      />
-                      <a
-                        href={img.public_url}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="absolute right-2 top-2 rounded-md bg-black/60 p-2 opacity-100 backdrop-blur-sm transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
-                      >
-                        <Download className="h-4 w-4 text-white" />
-                      </a>
-                    </div>
-                  )}
-                  <div className="px-4 py-3">
-                    <p className="text-sm font-medium capitalize">
-                      {img.format_type.replace('_', ' ')}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {spec
-                        ? `${spec.width} \u00D7 ${spec.height}px`
-                        : `${img.width} \u00D7 ${img.height}px`}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+    <ProjectDetail
+      project={projectData}
+      images={(imagesData ?? []) as GeneratedImage[]}
+    />
   )
 }
+

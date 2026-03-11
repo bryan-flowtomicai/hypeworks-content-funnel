@@ -9,7 +9,12 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 
 // ─── Firecrawl: fetch clean markdown from any URL ───────────────────────────
 
-async function scrapeWithFirecrawl(url: string): Promise<string | null> {
+interface FirecrawlResult {
+  markdown: string | null
+  imageUrls: string[]
+}
+
+async function scrapeWithFirecrawl(url: string): Promise<FirecrawlResult | null> {
   if (!FIRECRAWL_API_KEY) return null
 
   try {
@@ -30,7 +35,28 @@ async function scrapeWithFirecrawl(url: string): Promise<string | null> {
     if (!res.ok) return null
 
     const json = await res.json()
-    return json.data?.markdown ?? null
+    const markdown: string = json.data?.markdown ?? ''
+
+    // Extract product image URLs from Firecrawl markdown
+    // Amazon CDN patterns: m.media-amazon.com and images-na.ssl-images-amazon.com
+    const imagePattern = /https:\/\/(?:m\.media-amazon\.com|images-na\.ssl-images-amazon\.com)\/images\/I\/[A-Za-z0-9%._-]+\.(?:jpg|jpeg|png)/g
+    const rawMatches = markdown.match(imagePattern) ?? []
+
+    // Dedupe and filter: prefer high-res (SL1000+), exclude sprites/thumbnails
+    const seen = new Set<string>()
+    const imageUrls: string[] = []
+
+    for (const raw of rawMatches) {
+      // Normalize to strip size suffixes — keep the base image ID
+      const normalized = raw.replace(/\._[A-Z0-9_,]+_\./g, '._AC_SL1500_.')
+      if (!seen.has(normalized) && !raw.includes('sprite') && !raw.includes('trans-pixel')) {
+        seen.add(normalized)
+        imageUrls.push(normalized)
+        if (imageUrls.length >= 7) break
+      }
+    }
+
+    return { markdown: markdown || null, imageUrls }
   } catch {
     return null
   }
@@ -289,12 +315,8 @@ export async function POST(request: Request) {
     let method: 'ai' | 'regex' = 'regex'
 
     // Step 1: get page content — Firecrawl first, then basic fetch
-    let content = await scrapeWithFirecrawl(url)
-    const usedFirecrawl = !!content
-
-    if (!content) {
-      content = await scrapeWithFetch(url)
-    }
+    const firecrawlResult = await scrapeWithFirecrawl(url)
+    const content = firecrawlResult?.markdown ?? await scrapeWithFetch(url)
 
     if (!content) {
       return NextResponse.json(
@@ -303,6 +325,8 @@ export async function POST(request: Request) {
       )
     }
 
+    const productImages = firecrawlResult?.imageUrls ?? []
+
     // Step 2: extract structured data — Claude first, then regex
     let extracted = await extractWithClaude(content, url)
 
@@ -310,8 +334,7 @@ export async function POST(request: Request) {
       method = 'ai'
     } else {
       // Claude unavailable or failed — fall back to regex on raw HTML
-      // If we used Firecrawl (content is markdown), re-fetch raw HTML for regex
-      const rawHtml = usedFirecrawl ? await scrapeWithFetch(url) : content
+      const rawHtml = firecrawlResult ? await scrapeWithFetch(url) : content
       extracted = extractWithRegex(rawHtml ?? '', url)
     }
 
@@ -319,6 +342,7 @@ export async function POST(request: Request) {
       ...extracted,
       source_url: url,
       extraction_method: method,
+      product_images: productImages,
     })
   } catch (err) {
     console.error('Scrape error:', err)
