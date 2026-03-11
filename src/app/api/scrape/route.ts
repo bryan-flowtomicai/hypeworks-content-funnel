@@ -4,17 +4,96 @@ import Anthropic from '@anthropic-ai/sdk'
 
 export const maxDuration = 60
 
+const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
+const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN
 const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 
-// ─── Firecrawl: fetch clean markdown from any URL ───────────────────────────
+// ─── Shared result type ──────────────────────────────────────────────────────
 
-interface FirecrawlResult {
+interface ScrapeResult {
   markdown: string | null
   imageUrls: string[]
 }
 
-async function scrapeWithFirecrawl(url: string): Promise<FirecrawlResult | null> {
+// ─── Image extraction helper (shared by both scrapers) ──────────────────────
+
+function extractProductImages(markdown: string): string[] {
+  // Amazon CDN patterns: m.media-amazon.com and images-na.ssl-images-amazon.com
+  const imagePattern =
+    /https:\/\/(?:m\.media-amazon\.com|images-na\.ssl-images-amazon\.com)\/images\/I\/[A-Za-z0-9%._-]+\.(?:jpg|jpeg|png)/g
+  const rawMatches = markdown.match(imagePattern) ?? []
+
+  // Dedupe and prefer high-res variants, exclude sprites/thumbnails
+  const seen = new Set<string>()
+  const imageUrls: string[] = []
+
+  for (const raw of rawMatches) {
+    // Normalize size suffix → SL1500 for consistent high-res
+    const normalized = raw.replace(/\._[A-Z0-9_,]+_\./g, '._AC_SL1500_.')
+    if (!seen.has(normalized) && !raw.includes('sprite') && !raw.includes('trans-pixel')) {
+      seen.add(normalized)
+      imageUrls.push(normalized)
+      if (imageUrls.length >= 7) break
+    }
+  }
+
+  return imageUrls
+}
+
+// ─── Cloudflare Browser Rendering (primary) ──────────────────────────────────
+//
+// Uses real headless Chrome via Cloudflare's REST API.
+// Env: CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN (Browser Rendering - Edit)
+
+async function scrapeWithCloudflare(url: string): Promise<ScrapeResult | null> {
+  if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) return null
+
+  try {
+    const apiUrl = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/browser-rendering/markdown`
+
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${CLOUDFLARE_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        url,
+        // Wait for most network activity to settle — catches JS-rendered content
+        gotoOptions: { waitUntil: 'networkidle2' },
+        // Skip heavy assets we don't need — just want text/markdown
+        rejectRequestPattern: [
+          '\\.woff2?$',
+          '\\.ttf$',
+          '\\.eot$',
+          'google-analytics\\.com',
+          'doubleclick\\.net',
+          'googlesyndication\\.com',
+        ],
+      }),
+    })
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.warn('[scrape] Cloudflare Browser Rendering error:', res.status, errText.substring(0, 200))
+      return null
+    }
+
+    const json = await res.json()
+    const markdown: string = json.result ?? ''
+    if (!markdown) return null
+
+    return { markdown, imageUrls: extractProductImages(markdown) }
+  } catch (err) {
+    console.warn('[scrape] Cloudflare scrape failed:', err)
+    return null
+  }
+}
+
+// ─── Firecrawl (secondary fallback) ──────────────────────────────────────────
+
+async function scrapeWithFirecrawl(url: string): Promise<ScrapeResult | null> {
   if (!FIRECRAWL_API_KEY) return null
 
   try {
@@ -37,32 +116,29 @@ async function scrapeWithFirecrawl(url: string): Promise<FirecrawlResult | null>
     const json = await res.json()
     const markdown: string = json.data?.markdown ?? ''
 
-    // Extract product image URLs from Firecrawl markdown
-    // Amazon CDN patterns: m.media-amazon.com and images-na.ssl-images-amazon.com
-    const imagePattern = /https:\/\/(?:m\.media-amazon\.com|images-na\.ssl-images-amazon\.com)\/images\/I\/[A-Za-z0-9%._-]+\.(?:jpg|jpeg|png)/g
-    const rawMatches = markdown.match(imagePattern) ?? []
-
-    // Dedupe and filter: prefer high-res (SL1000+), exclude sprites/thumbnails
-    const seen = new Set<string>()
-    const imageUrls: string[] = []
-
-    for (const raw of rawMatches) {
-      // Normalize to strip size suffixes — keep the base image ID
-      const normalized = raw.replace(/\._[A-Z0-9_,]+_\./g, '._AC_SL1500_.')
-      if (!seen.has(normalized) && !raw.includes('sprite') && !raw.includes('trans-pixel')) {
-        seen.add(normalized)
-        imageUrls.push(normalized)
-        if (imageUrls.length >= 7) break
-      }
-    }
-
-    return { markdown: markdown || null, imageUrls }
+    return { markdown: markdown || null, imageUrls: extractProductImages(markdown) }
   } catch {
     return null
   }
 }
 
-// ─── Basic fetch fallback ───────────────────────────────────────────────────
+// ─── Scraper driver: Cloudflare → Firecrawl → basic fetch ───────────────────
+
+async function fetchPageContent(url: string): Promise<ScrapeResult> {
+  // 1. Cloudflare Browser Rendering (real headless Chrome, handles JS)
+  const cf = await scrapeWithCloudflare(url)
+  if (cf?.markdown) return cf
+
+  // 2. Firecrawl (managed scraping service)
+  const fc = await scrapeWithFirecrawl(url)
+  if (fc?.markdown) return fc
+
+  // 3. Basic fetch (raw HTML, no JS execution)
+  const rawHtml = await scrapeWithFetch(url)
+  return { markdown: rawHtml, imageUrls: [] }
+}
+
+// ─── Basic fetch fallback (raw HTML) ────────────────────────────────────────
 
 async function scrapeWithFetch(url: string): Promise<string | null> {
   try {
@@ -305,12 +381,14 @@ function extractAsin(url: string): string | null {
 // ─── Amazon review scraping ──────────────────────────────────────────────────
 
 async function scrapeReviews(asin: string): Promise<string[]> {
-  if (!FIRECRAWL_API_KEY || !ANTHROPIC_API_KEY) return []
+  if (!ANTHROPIC_API_KEY) return []
+  // Need at least one scraper available for reviews
+  if (!CLOUDFLARE_ACCOUNT_ID && !CLOUDFLARE_API_TOKEN && !FIRECRAWL_API_KEY) return []
 
   try {
     const reviewUrl = `https://www.amazon.com/product-reviews/${asin}?sortBy=recent&pageNumber=1`
-    const result = await scrapeWithFirecrawl(reviewUrl)
-    if (!result?.markdown) return []
+    const result = await fetchPageContent(reviewUrl)
+    if (!result.markdown) return []
 
     const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY })
 
@@ -367,9 +445,9 @@ export async function POST(request: Request) {
   try {
     let method: 'ai' | 'regex' = 'regex'
 
-    // Step 1: get page content — Firecrawl first, then basic fetch
-    const firecrawlResult = await scrapeWithFirecrawl(url)
-    const content = firecrawlResult?.markdown ?? await scrapeWithFetch(url)
+    // Step 1: fetch page content — Cloudflare → Firecrawl → basic fetch
+    const scrapeResult = await fetchPageContent(url)
+    const { markdown: content, imageUrls: productImages } = scrapeResult
 
     if (!content) {
       return NextResponse.json(
@@ -378,8 +456,6 @@ export async function POST(request: Request) {
       )
     }
 
-    const productImages = firecrawlResult?.imageUrls ?? []
-
     // Step 2: extract structured data — Claude first, then regex
     let extracted = await extractWithClaude(content, url)
 
@@ -387,8 +463,8 @@ export async function POST(request: Request) {
       method = 'ai'
     } else {
       // Claude unavailable or failed — fall back to regex on raw HTML
-      const rawHtml = firecrawlResult ? await scrapeWithFetch(url) : content
-      extracted = extractWithRegex(rawHtml ?? '', url)
+      const rawHtml = content.startsWith('<') ? content : await scrapeWithFetch(url) ?? ''
+      extracted = extractWithRegex(rawHtml, url)
     }
 
     // Step 3: scrape reviews in parallel (Amazon only, best-effort)
