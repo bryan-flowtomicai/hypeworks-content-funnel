@@ -681,6 +681,34 @@ export function ProjectDetail({
       {/* Strategy panel */}
       {currentAnalysis && <StrategyPanel analysis={currentAnalysis} />}
 
+      {/* Scraped product images strip */}
+      {productImages.length > 0 && (
+        <div className="mt-6">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Product images from listing ({productImages.length})
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {productImages.map((url, i) => (
+              <a
+                key={i}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-primary/40"
+                title={`Product image ${i + 1}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt={`Product image ${i + 1}`}
+                  className="h-20 w-20 object-contain p-1"
+                />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Image audit panel — listing image scores */}
       {currentAnalysis?.image_scores && currentAnalysis.image_scores.length > 0 && (
         <ImageAuditPanel scores={currentAnalysis.image_scores} />

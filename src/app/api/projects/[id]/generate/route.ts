@@ -150,17 +150,18 @@ export async function POST(
     const productImages = (scraped?.product_images as string[]) ?? []
     const primaryProductImage = productImages[0] ?? undefined
 
-    // Proxy the product image to fal.ai storage once upfront.
-    // This fixes Amazon CDN 422 errors AND gives Satori a stable URL to embed.
-    // The in-process cache means repeated calls within the batch are instant.
-    let proxiedProductImageUrl: string | undefined
-    if (primaryProductImage) {
+    // Proxy all product images to fal.ai storage upfront (in-process cache makes repeated calls free).
+    // We rotate images across slots so each gets a different product photo for visual variety.
+    const proxiedProductImages: string[] = []
+    for (const img of productImages.slice(0, 5)) {
       try {
-        proxiedProductImageUrl = await proxyImageToFalStorage(primaryProductImage)
-      } catch (err) {
-        console.warn('[generate] Product image proxy failed, continuing without it:', err)
+        const proxied = await proxyImageToFalStorage(img)
+        proxiedProductImages.push(proxied)
+      } catch {
+        // skip failed proxies
       }
     }
+    const proxiedProductImageUrl = proxiedProductImages[0] ?? undefined
 
     const slots = buildSlotRequests(body, analysis)
     const slotCount = slots.length
@@ -183,9 +184,20 @@ export async function POST(
 
     // ── Run all slots in parallel ───────────────────────────────────────────
     const settled = await Promise.allSettled(
-      slots.map(async (slot) => {
+      slots.map(async (slot, slotIndex) => {
         const spec = IMAGE_FORMATS[slot.format]
         if (!spec) throw new Error(`Unknown format: ${slot.format}`)
+
+        // Rotate product images across slots: each slot gets a different photo for visual variety.
+        // Falls back to primary image if we only have one.
+        const rotatedProductImage =
+          proxiedProductImages.length > 1
+            ? proxiedProductImages[slotIndex % proxiedProductImages.length]
+            : proxiedProductImageUrl
+
+        // Each generation gets a unique random seed so regenerating the same slot produces
+        // a different composition rather than the same image every time.
+        const generationSeed = Math.floor(Math.random() * 2_147_483_647)
 
         // Pick review highlight for social_proof slots
         const reviewHighlight =
@@ -230,8 +242,8 @@ export async function POST(
             format: slot.format,
             intent: slot.intent,
             brandColors: project.brand_colors,
-            // Use already-proxied URL (no Amazon CDN 422 risk; in-process cache means free)
-            referenceImageUrl: proxiedProductImageUrl ?? undefined,
+            referenceImageUrl: rotatedProductImage,
+            seed: generationSeed,
           })
 
           if (bgResult) {
