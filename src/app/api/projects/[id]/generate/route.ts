@@ -40,6 +40,13 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Admin emails bypass all credit checks
+    const adminEmails = (process.env.ADMIN_EMAILS ?? '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+    const isAdmin = adminEmails.includes((user.email ?? '').toLowerCase())
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('credits_remaining, subscription_tier')
@@ -54,6 +61,7 @@ export async function POST(
     const formats: ImageFormatType[] = body.formats ?? ['hero']
 
     if (
+      !isAdmin &&
       profile.subscription_tier === 'free' &&
       profile.credits_remaining < formats.length
     ) {
@@ -210,7 +218,7 @@ export async function POST(
 
     const successCount = results.filter((r) => r.status === 'complete').length
 
-    if (profile.subscription_tier === 'free' && successCount > 0) {
+    if (!isAdmin && profile.subscription_tier === 'free' && successCount > 0) {
       await admin
         .from('profiles')
         .update({

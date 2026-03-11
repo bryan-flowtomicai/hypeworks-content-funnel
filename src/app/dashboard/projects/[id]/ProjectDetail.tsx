@@ -8,6 +8,8 @@ import {
   ArrowLeft,
   Download,
   Sparkles,
+  X,
+  ZoomIn,
   TrendingUp,
   CheckCircle2,
   AlertCircle,
@@ -195,6 +197,7 @@ export function ProjectDetail({
     (scraped.product_images as string[]).length > 0
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(existingAnalysis)
+  const [lightbox, setLightbox] = useState<{ url: string; format: string; width: number; height: number } | null>(null)
 
   const completedImages = images.filter((img) => img.status === 'complete')
   const isGenerating = project.status === 'generating'
@@ -204,8 +207,60 @@ export function ProjectDetail({
     router.refresh()
   }
 
+  function openLightbox(img: GeneratedImage) {
+    const spec = IMAGE_FORMATS[img.format_type as keyof typeof IMAGE_FORMATS]
+    setLightbox({
+      url: img.public_url!,
+      format: img.format_type,
+      width: spec?.width ?? img.width,
+      height: spec?.height ?? img.height,
+    })
+  }
+
   return (
     <div>
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+            onClick={() => setLightbox(null)}
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div
+            className="relative max-h-[90vh] max-w-[90vw] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={lightbox.url}
+              alt={lightbox.format}
+              width={lightbox.width}
+              height={lightbox.height}
+              style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain' }}
+            />
+            <div className="mt-2 flex items-center justify-between">
+              <p className="text-xs text-white/60 capitalize">
+                {lightbox.format.replace('_', ' ')} — {lightbox.width} × {lightbox.height}px
+              </p>
+              <a
+                href={lightbox.url}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Download className="h-3.5 w-3.5" /> Download
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Link
         href="/dashboard/projects"
         className="mb-8 inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
@@ -322,18 +377,27 @@ export function ProjectDetail({
                   className="group overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/20"
                 >
                   {img.public_url && (
-                    <div className="relative">
+                    <div
+                      className="relative cursor-zoom-in"
+                      onClick={() => openLightbox(img)}
+                    >
                       <img
                         src={img.public_url}
                         alt={img.format_type}
                         className="aspect-video w-full object-cover"
                       />
+                      {/* Zoom hint */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+                        <ZoomIn className="h-8 w-8 text-white opacity-0 drop-shadow-lg transition-opacity group-hover:opacity-100" />
+                      </div>
+                      {/* Download button */}
                       <a
                         href={img.public_url}
                         download
                         target="_blank"
                         rel="noopener noreferrer"
                         className="absolute right-2 top-2 rounded-md bg-black/60 p-2 opacity-100 backdrop-blur-sm transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Download className="h-4 w-4 text-white" />
                       </a>
