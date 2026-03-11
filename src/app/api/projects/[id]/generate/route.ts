@@ -5,48 +5,79 @@ import { generateBackground } from '@/lib/fal/generate'
 import { generateOptimizedPrompt } from '@/lib/fal/prompt'
 import { renderTemplate } from '@/lib/templates'
 import type { TemplateData } from '@/lib/templates'
+import { SLOT_DEFINITIONS, type SlotId } from '@/lib/templates/types'
 import type { ImageIntent } from '@/lib/templates/types'
 import { IMAGE_FORMATS, type ImageFormatType } from '@/types'
+import type { StrategyAnalysis, SlotStrategy } from '../analyze/route'
 
-// Assign a diverse set of intents when generating multiple formats.
-// Each format gets a different creative goal so images tell varied stories.
-const FORMAT_DEFAULT_INTENTS: Record<ImageFormatType, ImageIntent> = {
-  hero: 'lifestyle',
-  standard: 'how_it_works',
-  square: 'benefit',
-  portrait: 'social_proof',
-  banner_wide: 'lifestyle',
+// ─── Slot request type ───────────────────────────────────────────────────────
+
+interface SlotRequest {
+  slotId: SlotId
+  format: ImageFormatType
+  intent: ImageIntent
+  headline?: string
+  subheadline?: string
+  copyBrief?: string
 }
 
-// When multiple of the same format type are requested, cycle through these
-const INTENT_CYCLE: ImageIntent[] = [
-  'lifestyle',
-  'benefit',
-  'how_it_works',
-  'feature_grid',
-  'social_proof',
-  'problem_solution',
-  'comparison',
-]
+// ─── Build slot requests from body ──────────────────────────────────────────
 
-function assignIntents(formats: ImageFormatType[]): Map<number, ImageIntent> {
-  const map = new Map<number, ImageIntent>()
-  const usedIntents = new Set<ImageIntent>()
+function buildSlotRequests(
+  body: Record<string, unknown>,
+  analysis: StrategyAnalysis | null
+): SlotRequest[] {
+  // New API: explicit slots array
+  if (Array.isArray(body.slots) && body.slots.length > 0) {
+    return body.slots as SlotRequest[]
+  }
 
-  formats.forEach((format, i) => {
-    const defaultIntent = FORMAT_DEFAULT_INTENTS[format]
-    if (!usedIntents.has(defaultIntent)) {
-      map.set(i, defaultIntent)
-      usedIntents.add(defaultIntent)
-    } else {
-      // Pick next unused intent from cycle
-      const next = INTENT_CYCLE.find((intent) => !usedIntents.has(intent)) ?? defaultIntent
-      map.set(i, next)
-      usedIntents.add(next)
+  // Slot IDs specified
+  if (Array.isArray(body.slotIds) && body.slotIds.length > 0) {
+    const slotIds = body.slotIds as SlotId[]
+    return slotIds.map((id) => {
+      const def = SLOT_DEFINITIONS.find((s) => s.id === id)!
+      const strategy = analysis?.slot_strategy?.find((s) => s.slot_id === id)
+      return {
+        slotId: id,
+        format: def.format,
+        intent: def.intent,
+        headline: strategy?.headline,
+        subheadline: strategy?.subheadline,
+        copyBrief: strategy?.copy_brief ?? def.defaultBrief,
+      }
+    })
+  }
+
+  // Legacy: formats array — map to default slots
+  if (Array.isArray(body.formats) && body.formats.length > 0) {
+    const formats = body.formats as ImageFormatType[]
+    return formats.map((format) => {
+      const def = SLOT_DEFINITIONS.find((s) => s.format === format) ?? SLOT_DEFINITIONS[0]
+      const strategy = analysis?.slot_strategy?.find((s) => s.slot_id === def.id)
+      return {
+        slotId: def.id,
+        format,
+        intent: def.intent,
+        headline: strategy?.headline,
+        subheadline: strategy?.subheadline,
+        copyBrief: strategy?.copy_brief ?? def.defaultBrief,
+      }
+    })
+  }
+
+  // Default: generate all slots
+  return SLOT_DEFINITIONS.map((def) => {
+    const strategy = analysis?.slot_strategy?.find((s) => s.slot_id === def.id)
+    return {
+      slotId: def.id,
+      format: def.format,
+      intent: def.intent,
+      headline: strategy?.headline,
+      subheadline: strategy?.subheadline,
+      copyBrief: strategy?.copy_brief ?? def.defaultBrief,
     }
   })
-
-  return map
 }
 
 export const maxDuration = 300
@@ -100,18 +131,6 @@ export async function POST(
     }
 
     const body = await request.json()
-    const formats: ImageFormatType[] = body.formats ?? ['hero']
-
-    if (
-      !isAdmin &&
-      profile.subscription_tier === 'free' &&
-      profile.credits_remaining < formats.length
-    ) {
-      return NextResponse.json(
-        { error: 'Insufficient credits. Upgrade your plan to continue.' },
-        { status: 403 }
-      )
-    }
 
     const { data: project } = await supabase
       .from('projects')
@@ -121,9 +140,26 @@ export async function POST(
       .single()
 
     if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+    }
+
+    const scraped = project.scraped_data as Record<string, unknown> | null
+    const analysis = (scraped?.analysis as StrategyAnalysis | null) ?? null
+    const productReviews = (scraped?.product_reviews as string[]) ?? []
+    const productImages = (scraped?.product_images as string[]) ?? []
+    const primaryProductImage = productImages[0] ?? undefined
+
+    const slots = buildSlotRequests(body, analysis)
+    const slotCount = slots.length
+
+    if (
+      !isAdmin &&
+      profile.subscription_tier === 'free' &&
+      profile.credits_remaining < slotCount
+    ) {
       return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
+        { error: 'Insufficient credits. Upgrade your plan to continue.' },
+        { status: 403 }
       )
     }
 
@@ -132,27 +168,21 @@ export async function POST(
       .update({ status: 'generating' })
       .eq('id', projectId)
 
-    const scraped = project.scraped_data as Record<string, unknown> | null
-    const productReviews = (scraped?.product_reviews as string[]) ?? []
-
-    // Assign diverse intents upfront so each image tells a different story
-    const intentMap = assignIntents(formats)
-
-    // ── Run all formats in parallel ──────────────────────────────────────
+    // ── Run all slots in parallel ───────────────────────────────────────────
     const settled = await Promise.allSettled(
-      formats.map(async (format, idx) => {
-        const spec = IMAGE_FORMATS[format]
-        if (!spec) throw new Error(`Unknown format: ${format}`)
+      slots.map(async (slot) => {
+        const spec = IMAGE_FORMATS[slot.format]
+        if (!spec) throw new Error(`Unknown format: ${slot.format}`)
 
-        const intent = intentMap.get(idx)
-
-        // Randomly pick a review highlight for social_proof intents
+        // Pick review highlight for social_proof slots
         const reviewHighlight =
-          productReviews.length > 0
-            ? productReviews[idx % productReviews.length]
-            : undefined
+          slot.intent === 'social_proof' && productReviews.length > 0
+            ? productReviews[0]
+            : productReviews.length > 0
+              ? productReviews[Math.floor(Math.random() * productReviews.length)]
+              : undefined
 
-        // Phase 1: Generate optimized prompt via Claude (with intent + reviews)
+        // Phase 1: Generate optimized prompt via Claude
         const prompt = await generateOptimizedPrompt({
           productName: project.product_name ?? project.name,
           brandName: project.brand_name ?? undefined,
@@ -162,28 +192,34 @@ export async function POST(
           contentTone: project.content_tone,
           brandColors: project.brand_colors,
           description:
-            (scraped?.description as string) ??
-            project.description ??
-            undefined,
+            (scraped?.description as string) ?? project.description ?? undefined,
           productReviews: productReviews.length > 0 ? productReviews : undefined,
-          intent,
-          format,
+          intent: slot.intent,
+          copyBrief: slot.copyBrief,
+          headline: slot.headline,
+          format: slot.format,
           width: spec.width,
           height: spec.height,
         })
 
-        // Phase 1b: Generate background image via fal.ai
+        // Phase 2: Generate background — use image-to-image for hero/portrait slots
         let backgroundImageUrl: string | null = null
         let requestId = ''
         let modelUsed = 'none'
 
         if (prompt !== 'SKIP') {
+          // Use product reference image for visual formats (lifestyle/benefit/how-it-works)
+          const useReference =
+            primaryProductImage &&
+            ['lifestyle', 'benefit', 'how_it_works', 'social_proof'].includes(slot.intent)
+
           const bgResult = await generateBackground({
             prompt,
             width: spec.width,
             height: spec.height,
-            format,
+            format: slot.format,
             brandColors: project.brand_colors,
+            referenceImageUrl: useReference ? primaryProductImage : undefined,
           })
 
           if (bgResult) {
@@ -193,10 +229,13 @@ export async function POST(
           }
         }
 
-        // Phase 2: Composite via Satori + resvg
+        // Phase 3: Composite via Satori + resvg
         const templateData: TemplateData = {
-          format,
-          intent,
+          format: slot.format,
+          intent: slot.intent,
+          slotId: slot.slotId,
+          headline: slot.headline,
+          subheadline: slot.subheadline,
           productName: project.product_name ?? project.name,
           displayTitle: (scraped?.display_title as string) || undefined,
           tagline: (scraped?.tagline as string) || undefined,
@@ -212,8 +251,7 @@ export async function POST(
 
         const finalPng = await renderTemplate(templateData)
 
-        // Upload to Supabase Storage — use format + random suffix to avoid collisions
-        const storagePath = `${user.id}/${projectId}/generated/${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${format}.png`
+        const storagePath = `${user.id}/${projectId}/generated/${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${slot.format}.png`
 
         const { error: uploadError } = await admin.storage
           .from('generated-images')
@@ -225,6 +263,14 @@ export async function POST(
           .from('generated-images')
           .getPublicUrl(storagePath)
 
+        // Store slot metadata in prompt_used as JSON
+        const promptMeta = JSON.stringify({
+          slot: slot.slotId,
+          intent: slot.intent,
+          headline: slot.headline ?? '',
+          prompt,
+        })
+
         const { error: insertError } = await admin
           .from('generated_images')
           .insert({
@@ -232,45 +278,50 @@ export async function POST(
             user_id: user.id,
             storage_path: storagePath,
             public_url: publicUrl,
-            format_type: format,
+            format_type: slot.format,
             width: spec.width,
             height: spec.height,
-            prompt_used: prompt,
+            prompt_used: promptMeta,
             fal_request_id: requestId,
             status: 'complete',
           })
 
         if (insertError) throw new Error(`DB insert failed: ${insertError.message}`)
 
-        return { format, status: 'complete' as const, imageUrl: publicUrl, model: modelUsed }
+        return {
+          slotId: slot.slotId,
+          format: slot.format,
+          status: 'complete' as const,
+          imageUrl: publicUrl,
+          model: modelUsed,
+        }
       })
     )
 
-    // Record failures in DB and build results array
+    // Record failures and build results array
     const results = await Promise.all(
       settled.map(async (result, i) => {
         if (result.status === 'fulfilled') return result.value
 
-        const format = formats[i]
-        const message = result.reason instanceof Error
-          ? result.reason.message
-          : 'Unknown generation error'
+        const slot = slots[i]
+        const message =
+          result.reason instanceof Error ? result.reason.message : 'Unknown generation error'
 
-        console.error(`Generation failed for format ${format}:`, message)
+        console.error(`Generation failed for slot ${slot.slotId}:`, message)
 
-        const spec = IMAGE_FORMATS[format]
+        const spec = IMAGE_FORMATS[slot.format]
         await admin.from('generated_images').insert({
           project_id: projectId,
           user_id: user.id,
           storage_path: '',
-          format_type: format,
+          format_type: slot.format,
           width: spec?.width ?? 0,
           height: spec?.height ?? 0,
-          prompt_used: '',
+          prompt_used: JSON.stringify({ slot: slot.slotId, error: message }),
           status: 'failed',
         })
 
-        return { format, status: 'failed' as const, error: message }
+        return { slotId: slot.slotId, format: slot.format, status: 'failed' as const, error: message }
       })
     )
 
@@ -280,10 +331,7 @@ export async function POST(
       await admin
         .from('profiles')
         .update({
-          credits_remaining: Math.max(
-            0,
-            profile.credits_remaining - successCount
-          ),
+          credits_remaining: Math.max(0, profile.credits_remaining - successCount),
         })
         .eq('id', user.id)
     }
@@ -294,14 +342,13 @@ export async function POST(
       .eq('id', projectId)
 
     if (results.every((r) => r.status === 'failed')) {
-      const firstError = results[0]?.error ?? 'All formats failed to generate'
+      const firstError = results[0]?.error ?? 'All slots failed to generate'
       return NextResponse.json({ error: firstError, results }, { status: 500 })
     }
 
     return NextResponse.json({ results })
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : 'Internal server error'
+    const message = err instanceof Error ? err.message : 'Internal server error'
     console.error('Generate route error:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }

@@ -14,7 +14,11 @@ function getSecondaryColor(data: TemplateData): string {
 }
 
 function getTitle(data: TemplateData): string {
-  return data.displayTitle || data.productName
+  return data.headline || data.displayTitle || data.productName
+}
+
+function getSubtitle(data: TemplateData): string {
+  return data.subheadline || getSubtitle(data) || ''
 }
 
 function getTopFeatures(data: TemplateData, count: number): string[] {
@@ -133,7 +137,7 @@ function HeroLifestyleVariant(data: TemplateData) {
             >
               {truncate(title, 50)}
             </span>
-            {data.tagline && (
+            {getSubtitle(data) && (
               <span
                 style={{
                   fontSize: 18,
@@ -142,10 +146,10 @@ function HeroLifestyleVariant(data: TemplateData) {
                   maxWidth: 600,
                 }}
               >
-                {data.tagline}
+                {getSubtitle(data)}
               </span>
             )}
-            {!data.tagline && data.description && (
+            {!getSubtitle(data) && data.description && (
               <span
                 style={{
                   fontSize: 16,
@@ -202,7 +206,7 @@ function HeroBenefitVariant(data: TemplateData) {
   const accent = getAccent(data)
   const secondary = getSecondaryColor(data)
   const title = getTitle(data)
-  const benefit = data.tagline || data.description || title
+  const benefit = getSubtitle(data) || data.description || title
 
   return (
     <div
@@ -428,7 +432,7 @@ function HeroProblemSolutionVariant(data: TemplateData) {
           {truncate(title, 48)}
         </span>
 
-        {data.tagline && (
+        {getSubtitle(data) && (
           <span
             style={{
               marginTop: 16,
@@ -438,7 +442,7 @@ function HeroProblemSolutionVariant(data: TemplateData) {
               display: 'flex',
             }}
           >
-            {truncate(data.tagline, 90)}
+            {truncate(getSubtitle(data), 90)}
           </span>
         )}
 
@@ -533,8 +537,8 @@ function StandardDefaultVariant(data: TemplateData) {
         <span style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.15 }}>
           {truncate(title, 45)}
         </span>
-        {data.tagline && (
-          <span style={{ fontSize: 13, color: MUTED }}>{data.tagline}</span>
+        {getSubtitle(data) && (
+          <span style={{ fontSize: 13, color: MUTED }}>{getSubtitle(data)}</span>
         )}
         {features.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -760,9 +764,9 @@ function StandardFeatureGridVariant(data: TemplateData) {
         <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>
           {truncate(title, 30)}
         </span>
-        {data.tagline && (
+        {getSubtitle(data) && (
           <span style={{ fontSize: 11, color: MUTED, lineHeight: 1.4 }}>
-            {truncate(data.tagline, 55)}
+            {truncate(getSubtitle(data), 55)}
           </span>
         )}
       </div>
@@ -803,7 +807,7 @@ function StandardFeatureGridVariant(data: TemplateData) {
 // Standard v4 — Social Proof: customer review quote bar
 function StandardSocialProofVariant(data: TemplateData) {
   const accent = getAccent(data)
-  const review = data.reviewHighlight || data.tagline || (data.keyFeatures[0] ?? '')
+  const review = data.reviewHighlight || getSubtitle(data) || (data.keyFeatures[0] ?? '')
   const title = getTitle(data)
 
   return (
@@ -1061,7 +1065,7 @@ function SquareDefaultVariant(data: TemplateData) {
 function SquareBenefitVariant(data: TemplateData) {
   const accent = getAccent(data)
   const title = getTitle(data)
-  const claim = data.tagline || data.description || data.keyFeatures[0] || title
+  const claim = getSubtitle(data) || data.description || data.keyFeatures[0] || title
 
   return (
     <div
@@ -1164,7 +1168,7 @@ function SquareBenefitVariant(data: TemplateData) {
 // Square v3 — Social Proof: large quote over bg
 function SquareSocialProofVariant(data: TemplateData) {
   const accent = getAccent(data)
-  const review = data.reviewHighlight || data.tagline || data.keyFeatures[0] || ''
+  const review = data.reviewHighlight || getSubtitle(data) || data.keyFeatures[0] || ''
   const title = getTitle(data)
 
   return (
@@ -1463,10 +1467,10 @@ function PortraitDefaultVariant(data: TemplateData) {
         <span style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2 }}>
           {truncate(title, 35)}
         </span>
-        {data.tagline && (
-          <span style={{ fontSize: 11, color: MUTED, lineHeight: 1.4 }}>{data.tagline}</span>
+        {getSubtitle(data) && (
+          <span style={{ fontSize: 11, color: MUTED, lineHeight: 1.4 }}>{getSubtitle(data)}</span>
         )}
-        {!data.tagline && data.keyFeatures[0] && (
+        {!getSubtitle(data) && data.keyFeatures[0] && (
           <span style={{ fontSize: 11, color: MUTED, lineHeight: 1.4 }}>
             {truncate(data.keyFeatures[0], 70)}
           </span>
@@ -1479,7 +1483,7 @@ function PortraitDefaultVariant(data: TemplateData) {
 // Portrait v2 — Social Proof: review card
 function PortraitSocialProofVariant(data: TemplateData) {
   const accent = getAccent(data)
-  const review = data.reviewHighlight || data.tagline || data.keyFeatures[0] || ''
+  const review = data.reviewHighlight || getSubtitle(data) || data.keyFeatures[0] || ''
   const title = getTitle(data)
 
   return (
@@ -1572,7 +1576,7 @@ function PortraitBenefitVariant(data: TemplateData) {
   const accent = getAccent(data)
   const secondary = getSecondaryColor(data)
   const title = getTitle(data)
-  const claim = data.tagline || data.keyFeatures[0] || data.description || title
+  const claim = getSubtitle(data) || data.keyFeatures[0] || data.description || title
 
   return (
     <div
@@ -1719,9 +1723,9 @@ export function BannerWideTemplate(data: TemplateData) {
         <span style={{ fontSize: 24, fontWeight: 800, textAlign: 'center' }}>
           {truncate(title, 45)}
         </span>
-        {data.tagline && (
+        {getSubtitle(data) && (
           <span style={{ fontSize: 13, color: MUTED, textAlign: 'center' }}>
-            {data.tagline}
+            {getSubtitle(data)}
           </span>
         )}
       </div>
