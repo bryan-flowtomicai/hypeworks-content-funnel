@@ -23,10 +23,10 @@ export interface PromptContext {
 // ─── Per-format base guidance ─────────────────────────────────────────────────
 
 const FORMAT_BASE: Record<ImageFormatType, string> = {
-  hero:        `This is a HERO banner (970×600). Wide cinematic image, premium and editorial.`,
-  standard:    `This is a STANDARD module (970×300). Wide, clean, graphic — works as infographic background.`,
-  square:      `This is a SQUARE module (600×600). Centered, product-focused, slight elevation angle.`,
-  portrait:    `This is a PORTRAIT module (300×400). Vertical product/lifestyle shot.`,
+  hero:        `This is a HERO banner (970×600 wide). CRITICAL composition rule: keep the LEFT 50% of the frame as a relatively dark, low-clutter zone — this is where headline text will be overlaid. The right side can have more visual detail.`,
+  standard:    `This is a STANDARD banner (970×300 wide). Keep the LEFT 45% dark and clean for text overlay. The right side can have product or visual interest.`,
+  square:      `This is a SQUARE module (600×600). Keep the BOTTOM 35% dark and clean for text overlay. Center and upper portions can have scene detail.`,
+  portrait:    `This is a PORTRAIT module (300×400 vertical). Keep the BOTTOM 40% very dark and clean — text overlay goes there. The upper 60% should be rich visual content.`,
   banner_wide: `This is a BANNER (970×130). No image generation needed — return "SKIP" only.`,
 }
 
@@ -34,19 +34,19 @@ const FORMAT_BASE: Record<ImageFormatType, string> = {
 
 const INTENT_GUIDANCE: Partial<Record<ImageIntent, string>> = {
   lifestyle:
-    `Aspirational lifestyle scene. Show the product in its natural environment being enjoyed by the target customer. Warm, natural light. Authentic and aspirational.`,
+    `Aspirational lifestyle scene. Show the product in its natural environment being enjoyed by the target customer. Warm, natural light. Authentic and aspirational. No busy patterns — clean negative space.`,
   benefit:
-    `Dramatic benefit visualization. Abstract or symbolic scene that communicates the core transformation or value. Bold composition, strong emotional contrast. The visual must reinforce the headline.`,
+    `Dramatic benefit visualization. Bold, emotionally resonant scene that communicates the core transformation. Strong lighting contrast. Use bokeh or blurred backgrounds to keep visual weight low in text overlay zones.`,
   how_it_works:
-    `Clean, instructional background. Subtle workspace or surface texture suggesting process and clarity. Muted tones, plenty of negative space for step-by-step text overlays.`,
+    `Ultra-clean instructional background. Minimal workspace or soft textured surface. Muted neutral tones with plenty of open space. The simpler the better — this is a text-heavy template.`,
   feature_grid:
-    `Technical product showcase. Clean studio surface or elegant flat-lay. Neutral or lightly tinted. Feels detailed and precise, like a premium product spec sheet.`,
+    `Clean studio product surface. Neutral gradient or subtle textured background. Premium ingredient close-up or elegant flat-lay. Must feel like a luxury product catalogue page.`,
   social_proof:
-    `Warm, human, authentic scene. Soft natural light, hands with product or candid moment of use. Communicates genuine happiness and real-world results.`,
+    `Warm, soft, authentic lifestyle background. Soft diffused natural light. Gentle textures — linen, marble, wood grain. Conveys trust and human connection. Avoid busy patterns.`,
   problem_solution:
-    `Split or contrast composition. One side represents the problem (darker, chaotic, frustrated), the other the solution (bright, clean, relieved). Powerful visual storytelling.`,
+    `High-contrast split visual. Left side slightly darker/cooler, right side brighter/warmer. Create a visual tension and release. Clean tonal zones, no busy details.`,
   comparison:
-    `Clean premium studio environment. Confident neutral background that lets the product shine. Feels like an award-winning comparison ad.`,
+    `Ultra-clean premium studio environment. Soft white or light gradient background with subtle depth. Feels like Apple or Dyson product photography — minimal and confident.`,
 }
 
 // ─── Model-specific prompt guidance ─────────────────────────────────────────
@@ -140,9 +140,11 @@ ${modelHint}
 RULES:
 1. Be HYPER-SPECIFIC to this product — no generic photography language
 2. Describe scene elements, lighting quality, atmosphere, and mood concretely
-3. NEVER include text, logos, or UI elements (text is overlaid separately via code)
-4. Think like a luxury brand art director: what scene would make a customer feel something?
-5. Return ONLY the prompt — no explanation, no quotes, no prefix like "Prompt:"`,
+3. *** ABSOLUTELY NO TEXT, WORDS, LABELS, NUMBERS, OR TYPOGRAPHY IN THE IMAGE *** — all text is added via code overlay. Do not describe any text, signs, labels, or writing — not even "before/after" labels.
+4. *** NO UI ELEMENTS, ICONS, ARROWS, OR GRAPHIC OVERLAYS *** in the generated image.
+5. Think like a Tier-1 luxury brand art director: what PURE VISUAL SCENE would make a customer feel something?
+6. The image will have text overlaid by code — ensure the composition has clean, low-clutter zones for text readability (see FORMAT section above).
+7. Return ONLY the scene description prompt — no explanation, no quotes, no prefix like "Prompt:"`,
         },
       ],
     })

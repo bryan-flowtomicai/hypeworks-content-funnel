@@ -28,6 +28,21 @@ export interface SlotStrategy {
   copy_brief: string
 }
 
+export interface ImageDimensionScore {
+  label: string   // e.g. "Design & Image Quality"
+  score: number   // 1.0–5.0
+}
+
+export interface ImageScore {
+  image_number: number
+  type: string      // e.g. "Hero", "Lifestyle", "Infographic"
+  score: number     // 1.0–5.0 overall
+  dimensions: ImageDimensionScore[]
+  what_we_see: string
+  why_it_matters: string
+  how_to_fix: string
+}
+
 export interface StrategyAnalysis {
   cro_potential: 'High' | 'Medium' | 'Low'
   image_performance_score: number  // 0–5
@@ -35,11 +50,11 @@ export interface StrategyAnalysis {
   conversion_drivers: ConversionDriver[]
   conversion_blockers: ConversionBlocker[]
   slot_strategy: SlotStrategy[]
-  // Legacy vision scoring fields (kept for backward compatibility)
+  // Vision scoring fields
   overall_score?: number
   current_grade?: string
   estimated_conversion_lift?: string
-  image_scores?: Array<{ image_number: number; type: string; score: number; what_works: string; gap: string }>
+  image_scores?: ImageScore[]
   missing_slots?: string[]
   top_recommendations?: string[]
   brand_voice_detected?: string
@@ -61,6 +76,8 @@ async function analyzeStrategy(
   const slotList = SLOT_DEFINITIONS.map(
     (s) => `${s.id}: ${s.name} (${s.label}) — ${s.defaultBrief}`
   ).join('\n')
+
+  const hasReviews = reviews.length > 0
 
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
@@ -93,7 +110,7 @@ Return ONLY valid JSON (no markdown, no explanation):
       "rank": 1,
       "headline": "<5-7 word benefit-focused headline, customer voice>",
       "subheadline": "<one supporting sentence, specific and credible>",
-      "data_points": <integer, how many reviews mention this>,
+      "data_points": <integer, estimated importance 1-50 if no reviews or actual count if reviews exist>,
       "customer_journey": "Pre-Purchase"
     }
   ],
@@ -115,13 +132,13 @@ Return ONLY valid JSON (no markdown, no explanation):
 }
 
 Rules:
-- Generate exactly 5-6 conversion_drivers ranked by review frequency
-- Generate exactly 3-4 conversion_blockers (what customers worry about)
+- ALWAYS generate exactly 5-6 conversion_drivers. ${hasReviews ? 'Rank by review frequency. Use data_points = actual review count.' : 'No reviews available — infer drivers from the product name, features, description, category, and target audience. Use data_points = estimated importance (1–30 scale). Headlines must reflect what buyers in this category typically care about most.'}
+- ALWAYS generate exactly 3-4 conversion_blockers. ${hasReviews ? 'Based on review friction.' : 'Based on common objections in this product category.'}
 - Generate exactly 8 slot_strategy entries, one per slot (HERO, PT01–PT07)
 - Headlines must be specific to THIS product, not generic
-- For PT07 (Social Proof), the headline should quote or paraphrase a real review
+- For PT07 (Social Proof), ${hasReviews ? 'quote or paraphrase a real review' : 'craft a compelling customer-voice testimonial based on the product benefits'}
 - copy_brief is for the AI background image generator — describe scene, lighting, environment
-- cro_potential is High if reviews show clear, specific benefits; Low if vague/mixed`,
+- cro_potential is High if product has clear, specific differentiators; Low if vague/commodity`,
       },
     ],
   })
@@ -146,7 +163,7 @@ async function scoreImages(
 
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 1500,
+    max_tokens: 2000,
     messages: [
       {
         role: 'user',
@@ -154,12 +171,7 @@ async function scoreImages(
           ...imageBlocks,
           {
             type: 'text',
-            text: `Score these ${imageUrls.length} existing Amazon listing images against the 5 buyer questions:
-1. What is this? (product clarity)
-2. Why do I want it? (benefit communication)
-3. How does it work? (mechanism)
-4. Why is it better? (competitive advantage)
-5. Can I trust it? (social proof)
+            text: `You are an Amazon A+ content image quality auditor. Score these ${imageUrls.length} existing product listing images.
 
 Return ONLY valid JSON:
 {
@@ -167,12 +179,32 @@ Return ONLY valid JSON:
   "current_grade": "<A|B|C|D|F>",
   "estimated_conversion_lift": "<X-Y%>",
   "image_scores": [
-    { "image_number": 1, "type": "<image type>", "score": <0-100>, "what_works": "<one sentence>", "gap": "<gap or 'none'>" }
+    {
+      "image_number": 1,
+      "type": "<Main Hero|Lifestyle|Infographic|Benefit|Comparison|Social Proof|How It Works>",
+      "score": <1.0-5.0>,
+      "dimensions": [
+        { "label": "Design & Image Quality", "score": <1.0-5.0> },
+        { "label": "Perceived Value", "score": <1.0-5.0> },
+        { "label": "Message Strength", "score": <1.0-5.0> },
+        { "label": "Message Clarity", "score": <1.0-5.0> }
+      ],
+      "what_we_see": "<1-2 sentence objective description of layout, composition, text>",
+      "why_it_matters": "<1-2 sentence impact on buyer trust and conversion>",
+      "how_to_fix": "<1-2 sentence specific, actionable improvement recommendation>"
+    }
   ],
-  "missing_slots": ["<missing content types>"],
+  "missing_slots": ["<content type that is missing>"],
   "top_recommendations": ["<rec 1>", "<rec 2>", "<rec 3>"],
   "brand_voice_detected": "<brief description>"
-}`,
+}
+
+Scoring rubric (1.0-5.0):
+- 5.0: Professional, conversion-optimized, Tier-1 brand quality
+- 4.0: Good, clear message, minor polish needed
+- 3.0: Adequate, but generic or lacks visual hierarchy
+- 2.0: Weak, confusing layout or low visual quality
+- 1.0: Very poor, fails to communicate product value`,
           },
         ],
       },
